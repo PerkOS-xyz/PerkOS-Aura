@@ -22,7 +22,7 @@ export class SupabaseAdapter {
    * Create a memory (conversation message, fact, etc.)
    */
   async createMemory(memory: Memory): Promise<void> {
-    const { error } = await supabaseAdmin.from("conversation_history").insert({
+    const { error } = await supabaseAdmin.schema("aura").from("conversation_history").insert({
       user_wallet_address: this.userWalletAddress,
       conversation_id: memory.roomId || this.roomId,
       message_role: (memory as any).userId ? "user" : "assistant",
@@ -49,6 +49,7 @@ export class SupabaseAdapter {
     const limit = params?.limit || 10;
 
     const { data, error } = await supabaseAdmin
+      .schema("aura")
       .from("conversation_history")
       .select("*")
       .eq("user_wallet_address", this.userWalletAddress)
@@ -79,6 +80,7 @@ export class SupabaseAdapter {
    */
   async searchMemories(query: string, limit: number = 10): Promise<Memory[]> {
     const { data, error } = await supabaseAdmin
+      .schema("aura")
       .from("conversation_history")
       .select("*")
       .eq("user_wallet_address", this.userWalletAddress)
@@ -109,6 +111,7 @@ export class SupabaseAdapter {
    */
   async getMemoryById(id: string): Promise<Memory | null> {
     const { data, error } = await supabaseAdmin
+      .schema("aura")
       .from("conversation_history")
       .select("*")
       .eq("id", id)
@@ -137,7 +140,7 @@ export class SupabaseAdapter {
    */
   async createEntity(entity: Entity): Promise<void> {
     // Store as knowledge in user_knowledge table
-    const { error } = await supabaseAdmin.from("user_knowledge").insert({
+    const { error } = await supabaseAdmin.schema("aura").from("user_knowledge").insert({
       user_wallet_address: this.userWalletAddress,
       title: entity.names[0] || "Entity",
       content: JSON.stringify(entity),
@@ -156,6 +159,7 @@ export class SupabaseAdapter {
   async updateEntity(entity: Entity): Promise<void> {
     // Update knowledge entry
     const { error } = await supabaseAdmin
+      .schema("aura")
       .from("user_knowledge")
       .update({
         title: entity.names[0] || "Entity",
@@ -176,6 +180,7 @@ export class SupabaseAdapter {
    */
   async getEntity(id: string): Promise<Entity | null> {
     const { data, error } = await supabaseAdmin
+      .schema("aura")
       .from("user_knowledge")
       .select("*")
       .eq("id", id)
@@ -199,7 +204,7 @@ export class SupabaseAdapter {
    */
   async createRelationship(rel: Relationship): Promise<void> {
     // Store relationships in user_knowledge with special category
-    const { error } = await supabaseAdmin.from("user_knowledge").insert({
+    const { error } = await supabaseAdmin.schema("aura").from("user_knowledge").insert({
       user_wallet_address: this.userWalletAddress,
       title: `Relationship: ${(rel as any).sourceEntityId || (rel as any).entityA} -> ${(rel as any).targetEntityId || (rel as any).entityB}`,
       content: JSON.stringify(rel),
@@ -217,6 +222,7 @@ export class SupabaseAdapter {
    */
   async getRelationships(entityId: string): Promise<Relationship[]> {
     const { data, error } = await supabaseAdmin
+      .schema("aura")
       .from("user_knowledge")
       .select("*")
       .eq("user_wallet_address", this.userWalletAddress)
