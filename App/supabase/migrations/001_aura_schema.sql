@@ -1,3 +1,8 @@
+-- Clean up existing aura schema objects if they exist
+DROP TABLE IF EXISTS aura.conversation_history CASCADE;
+DROP TABLE IF EXISTS aura.user_knowledge CASCADE;
+DROP SCHEMA IF EXISTS aura CASCADE;
+
 -- Create aura schema
 CREATE SCHEMA IF NOT EXISTS aura;
 
@@ -8,10 +13,10 @@ CREATE TABLE IF NOT EXISTS aura.conversation_history (
   conversation_id TEXT NOT NULL,
   message_role TEXT NOT NULL CHECK (message_role IN ('user', 'assistant', 'system')),
   message_content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
   
   -- Index for fast retrieval by user and conversation
-  CONSTRAINT fk_aura_conversation_user FOREIGN KEY (user_wallet_address) REFERENCES auth.users(id) ON DELETE CASCADE
+  -- CONSTRAINT fk_aura_conversation_user removed due to type mismatch (text vs uuid)
 );
 
 -- Index for searching memories
