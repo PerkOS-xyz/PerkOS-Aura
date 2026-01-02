@@ -1,7 +1,7 @@
 {
-  "name": "perkos-vendor-service-ai",
+  "name": "aura-service",
   "version": "1.0.0",
-  "description": "Next.js 14 App for x402 Vendor API with AI Services (Analysis, Generation, Whisper, TTS)",
+  "description": "Aura - Intelligent Vendor Service for PerkOS (Analysis, Generation, Whisper, TTS)",
   "private": true,
   "scripts": {
     "dev": "next dev",

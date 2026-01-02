@@ -2,24 +2,24 @@
 
 export default function DocsPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
-            <div className="container mx-auto px-4 py-8">
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                        API Documentation
+        <div className="min-h-screen bg-background text-foreground">
+            <main className="container max-w-6xl mx-auto px-4 py-12">
+                <div className="max-w-4xl mx-auto">
+                    <h1 className="text-4xl font-bold font-heading mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                        Developer Documentation
                     </h1>
-                    <p className="text-gray-400">Complete guide to all 20 AI service endpoints with x402 micropayments</p>
+                    <p className="text-muted-foreground">Complete guide to all 20 AI service endpoints with x402 micropayments</p>
                 </div>
 
                 {/* x402 Payment Info */}
-                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-6 mb-8">
-                    <h2 className="text-xl font-semibold text-cyan-400 mb-3">🔐 x402 v2 Payment Required</h2>
-                    <p className="text-gray-300 mb-3">All endpoints require x402 v2 payment envelope headers:</p>
-                    <div className="bg-slate-900/50 rounded-lg p-4 font-mono text-sm text-gray-300">
-                        <div>x-authorization: {`{"from":"0x...","to":"0x...","amount":"1000","token":"0x...",...}`}</div>
+                <div className="bg-primary/10 border border-primary/30 rounded-xl p-6 mb-8">
+                    <h2 className="text-xl font-semibold text-primary mb-3">🔐 x402 v2 Payment Required</h2>
+                    <p className="text-muted-foreground mb-3">All endpoints require x402 v2 payment envelope headers:</p>
+                    <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm text-muted-foreground">
+                        <div>x-authorization: {`{ "from": "0x...", "to": "0x...", "amount": "1000", "token": "0x...",... } `}</div>
                         <div className="mt-2">x-signature: 0x...</div>
                     </div>
-                    <p className="text-gray-400 mt-3 text-sm">
+                    <p className="text-muted-foreground mt-3 text-sm">
                         💡 Use the Dashboard to test endpoints with automatic payment handling
                     </p>
                 </div>
@@ -185,15 +185,15 @@ export default function DocsPage() {
                 </Section>
 
                 {/* Quick Links */}
-                <div className="mt-12 bg-slate-800/50 border border-blue-500/30 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-cyan-400 mb-4">Quick Links</h3>
+                <div className="mt-12 bg-card border border-border rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-primary mb-4">Quick Links</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <a href="/dashboard" className="text-blue-400 hover:text-blue-300">→ Try in Dashboard</a>
-                        <a href="/admin" className="text-blue-400 hover:text-blue-300">→ Admin Panel</a>
-                        <a href="https://docs.perkos.xyz" className="text-blue-400 hover:text-blue-300">→ x402 Protocol Docs</a>
+                        <a href="/dashboard" className="text-primary hover:text-primary/80">→ Try in Dashboard</a>
+                        <a href="/admin" className="text-primary hover:text-primary/80">→ Admin Panel</a>
+                        <a href="https://docs.perkos.xyz" className="text-primary hover:text-primary/80">→ x402 Protocol Docs</a>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }
@@ -201,7 +201,7 @@ export default function DocsPage() {
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
     return (
         <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-100 mb-4 flex items-center gap-2">
+            <h2 className="text-2xl font-bold font-heading text-foreground mb-4 flex items-center gap-2">
                 <span>{icon}</span>
                 {title}
             </h2>
@@ -224,29 +224,29 @@ function Endpoint({
     request: any;
 }) {
     return (
-        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-5 hover:border-blue-500/50 transition-colors">
+        <div className="bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-colors">
             <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                        <span className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">{method}</span>
-                        <code className="text-cyan-400 font-mono text-sm">{path}</code>
+                        <span className="px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded">{method}</span>
+                        <code className="text-secondary font-mono text-sm">{path}</code>
                     </div>
-                    <p className="text-gray-400 text-sm mt-2">{description}</p>
+                    <p className="text-muted-foreground text-sm mt-2">{description}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                     <span className="px-3 py-1 bg-green-600/20 text-green-400 text-sm font-semibold rounded-full border border-green-600/30">
                         {price}
                     </span>
-                    <span className="px-2 py-1 bg-cyan-600/20 text-cyan-400 text-xs rounded border border-cyan-600/30" title="Requires x402 payment">
+                    <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded border border-secondary/30" title="Requires x402 payment">
                         🔐 x402
                     </span>
                 </div>
             </div>
             <details className="mt-3">
-                <summary className="text-gray-400 text-sm cursor-pointer hover:text-gray-300">
+                <summary className="text-muted-foreground text-sm cursor-pointer hover:text-foreground">
                     Show example request →
                 </summary>
-                <pre className="mt-2 bg-slate-900/50 rounded p-3 overflow-x-auto text-xs text-gray-300">
+                <pre className="mt-2 bg-muted/50 rounded p-3 overflow-x-auto text-xs text-muted-foreground">
                     {JSON.stringify(request, null, 2)}
                 </pre>
             </details>

@@ -1,6 +1,6 @@
-# PerkOS AI Vendor Service
+# Aura - Intelligent Vendor Service
 
-Professional AI services powered by GPT-4o, DALL-E 3, and Whisper with x402 v2 micropayments. Provides 20 AI endpoints for vision, NLP, business tools, and developer utilities.
+**Aura** is a professional AI vendor service for PerkOS, powered by GPT-4o, DALL-E 3, and Whisper with x402 v2 micropayments. It provides 20 AI endpoints for vision, NLP, business tools, and developer utilities with a high-performance "Neon Horizon" identity.
 
 ## 🚀 Features
 

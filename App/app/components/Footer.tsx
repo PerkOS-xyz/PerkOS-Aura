@@ -8,13 +8,13 @@ export function Footer() {
   const social = configData.social || {};
 
   return (
-    <footer className="border-t border-slate-800 bg-slate-950">
+    <footer className="border-t border-border bg-background">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-lg font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              {configData.service?.name || "PerkOS Vendor API"}
+            <h3 className="text-lg font-bold font-heading mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              {configData.service?.name || "Aura"}
             </h3>
             <p className="text-sm text-gray-400 mb-4">
               {configData.service?.description || ""}

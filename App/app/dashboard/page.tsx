@@ -33,19 +33,19 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-          AI Vendor Service Dashboard
+        <h1 className="text-4xl font-bold font-heading mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          Aura Dashboard
         </h1>
-        <p className="text-gray-400">
+        <p className="text-muted-foreground">
           Interact with your personal AI agent to analyze images, generate art, and more.
         </p>
       </div>
 
       {/* Wallet Info */}
-      <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6 backdrop-blur-sm mb-8">
-        <div className="text-sm text-gray-400 mb-2">Wallet Address</div>
+      <div className="bg-card border border-border rounded-xl p-6 backdrop-blur-sm mb-8">
+        <div className="text-sm text-muted-foreground mb-2">Wallet Address</div>
         <div className="flex items-center gap-2">
-          <div className="text-sm font-mono text-gray-300">
+          <div className="text-sm font-mono text-foreground">
             {account?.address ? formatAddress(account.address) : "Not connected"}
           </div>
           {account?.address && (
@@ -89,11 +89,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Chat Interface */}
-      <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-6 backdrop-blur-sm h-[600px] flex flex-col">
-        <h2 className="text-xl font-semibold text-gray-100 mb-4">
+      <div className="bg-card border border-border rounded-xl p-6 backdrop-blur-sm h-[600px] flex flex-col">
+        <h2 className="text-xl font-semibold font-heading text-foreground mb-4">
           AI Agent Chat
         </h2>
-        <div className="flex-1 bg-slate-900/50 rounded-lg overflow-hidden">
+        <div className="flex-1 bg-muted/50 rounded-lg overflow-hidden">
           <ChatInterface />
         </div>
       </div>

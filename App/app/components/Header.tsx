@@ -71,6 +71,7 @@ export function Header() {
   const account = useActiveAccount();
   const activeChain = useActiveWalletChain();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -92,23 +93,91 @@ export function Header() {
   }, [account]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-800 bg-slate-950/95 backdrop-blur supports-[backdrop-filter]:bg-slate-950/75">
-      <div className="container flex h-16 items-center justify-between px-4">
-        <div className="flex items-center space-x-8">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="container max-w-6xl mx-auto flex h-16 items-center px-4">
+        {/* Left: Logo */}
+        <div className="flex-1 flex justify-start">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              PerkOS AI Vendor Service
+            <span className="text-3xl font-bold font-heading bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Aura
             </span>
           </Link>
-          <nav className="hidden md:flex items-center space-x-6">
+        </div>
+
+        {/* Center: Desktop Nav */}
+        <nav className="hidden md:flex items-center justify-center space-x-6">
+          {navItems.map((item) => {
+            if (item.requiresAuth && !account) return null;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === item.href ? "text-primary" : "text-muted-foreground"
+                  }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname?.startsWith('/admin') ? "text-cyan-400" : "text-muted-foreground"}`}
+            >
+              Admin
+            </Link>
+          )}
+        </nav>
+
+        {/* Right: Wallet & Mobile Toggle */}
+        <div className="flex-1 flex justify-end items-center space-x-4">
+          {/* Network Display - Desktop */}
+          {activeChain && (
+            <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border">
+              <div className={`w-2 h-2 rounded-full ${isTestnet(activeChain.id) ? "bg-yellow-400" : "bg-green-400"
+                }`} />
+              <span className="text-xs font-medium text-muted-foreground">
+                {getNetworkDisplayName(activeChain.id)}
+              </span>
+            </div>
+          )}
+          <div className="hidden md:block">
+            <ConnectButton
+              client={client}
+              wallets={supportedWallets}
+              chains={supportedChains}
+              connectModal={{ size: "wide" }}
+              theme="dark"
+            />
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 text-muted-foreground hover:text-foreground"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 18 12" /></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-border bg-background p-4 space-y-4">
+          <nav className="flex flex-col space-y-4">
             {navItems.map((item) => {
               if (item.requiresAuth && !account) return null;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname === item.href ? "text-cyan-400" : "text-gray-300"
+                  className={`text-sm font-medium transition-colors hover:text-primary ${pathname === item.href ? "text-primary" : "text-muted-foreground"
                     }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
@@ -117,36 +186,24 @@ export function Header() {
             {isAdmin && (
               <Link
                 href="/admin"
-                className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname?.startsWith('/admin') ? "text-cyan-400" : "text-gray-300"}`}
+                className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname?.startsWith('/admin') ? "text-cyan-400" : "text-muted-foreground"}`}
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 Admin
               </Link>
             )}
           </nav>
+          <div className="pt-4 border-t border-border">
+            <ConnectButton
+              client={client}
+              wallets={supportedWallets}
+              chains={supportedChains}
+              connectModal={{ size: "wide" }}
+              theme="dark"
+            />
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
-          {/* Network Display */}
-          {activeChain && (
-            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700">
-              <div className={`w-2 h-2 rounded-full ${isTestnet(activeChain.id) ? "bg-yellow-400" : "bg-green-400"
-                }`} />
-              <span className="text-xs font-medium text-gray-300">
-                {getNetworkDisplayName(activeChain.id)}
-              </span>
-              <span className="text-xs text-gray-500">
-                ({activeChain.id})
-              </span>
-            </div>
-          )}
-          <ConnectButton
-            client={client}
-            wallets={supportedWallets}
-            chains={supportedChains}
-            connectModal={{ size: "wide" }}
-            theme="dark"
-          />
-        </div>
-      </div>
+      )}
     </header>
   );
 }
