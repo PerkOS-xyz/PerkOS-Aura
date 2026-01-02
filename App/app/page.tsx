@@ -73,11 +73,10 @@ export default function Home() {
               {features.map((feature: any, index: number) => (
                 <div
                   key={index}
-                  className={`p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 ${
-                    feature.highlight
+                  className={`p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 ${feature.highlight
                       ? "bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-blue-500/50"
                       : "bg-slate-800/30 border-blue-500/20 hover:border-blue-400/50"
-                  }`}
+                    }`}
                 >
                   <div className="text-4xl mb-4">
                     {iconMap[feature.icon] || "✨"}
@@ -100,10 +99,10 @@ export default function Home() {
             <div className="max-w-4xl mx-auto">
               <div className="bg-slate-800/30 border border-blue-500/20 rounded-xl p-8 backdrop-blur-sm">
                 <h2 className="text-3xl font-bold mb-4 text-gray-100">
-                  {mcp.title || "Configure with MCP"}
+                  {(mcp as any).title || "Configure with MCP"}
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  {mcp.description || ""}
+                  {(mcp as any).description || ""}
                 </p>
 
                 {/* Instructions */}
@@ -112,7 +111,7 @@ export default function Home() {
                     Setup Instructions
                   </h3>
                   <ol className="list-decimal list-inside space-y-2 text-gray-300">
-                    {(mcp.instructions || []).map((instruction: string, index: number) => (
+                    {((mcp as any).instructions || []).map((instruction: string, index: number) => (
                       <li key={index} className="text-sm">
                         {instruction}
                       </li>
