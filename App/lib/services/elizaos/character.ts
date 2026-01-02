@@ -5,11 +5,15 @@
  * Reference: https://docs.elizaos.ai/agents/character
  */
 
-import type { Character } from "@elizaos/core";
+import { Character, ModelProviderName } from "@elizaos/core";
 
 export function createAIServiceCharacter(userWalletAddress: string): Character {
   return {
     name: "AI Assistant",
+    modelProvider: ModelProviderName.OPENAI,
+    settings: {
+      model: "gpt-4o",
+    },
     username: "ai_assistant",
     bio: [
       "A helpful AI assistant for image analysis, generation, and audio processing. Uses x402 payments for premium AI services.",
