@@ -1,25 +1,25 @@
 {
   "service": {
-    "name": "PerkOS AI Vendor Service",
-    "tagline": "20 AI Services with x402 Micropayments",
-    "description": "Production-ready AI service platform with GPT-4o, DALL-E 3, Whisper, and more - all with seamless crypto micropayments",
+    "name": "Aura",
+    "tagline": "Intelligent AI Services",
+    "description": "Professional AI platform with GPT-4o, DALL-E 3, and Whisper - powered by Aura",
     "version": "2.0.0"
   },
   "branding": {
     "logo": "/logo.png",
     "favicon": "/favicon.ico",
-    "primaryColor": "#000000",
-    "secondaryColor": "#ffffff",
-    "accentColor": "#0066ff"
+    "primaryColor": "#7c3aed",
+    "secondaryColor": "#06b6d4",
+    "accentColor": "#db2777"
   },
   "hero": {
-    "title": "20 AI Services with x402 Micropayments",
-    "subtitle": "Powerful AI capabilities powered by GPT-4o, DALL-E 3, and Whisper",
-    "description": "From image generation to code review, access professional AI services with seamless crypto micropayments. Vision, NLP, business tools, and developer utilities - all in one API.",
+    "title": "Intelligent AI Services with x402",
+    "subtitle": "Unleash the power of GPT-4o, DALL-E 3, and Whisper",
+    "description": "Experience the next generation of AI services. Ultra-fast, secure, and powered by micropayments.",
     "image": "/hero-image.png",
     "cta": {
       "primary": {
-        "text": "Get Started",
+        "text": "Start Creating",
         "link": "/dashboard",
         "variant": "default"
       },
@@ -141,7 +141,7 @@
     "website": "https://perkos.io"
   },
   "footer": {
-    "copyright": "© 2026 PerkOS AI Vendor Service",
+    "copyright": "© 2026 Aura Service",
     "links": [
       {
         "text": "Documentation",

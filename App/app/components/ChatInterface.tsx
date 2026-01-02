@@ -288,7 +288,7 @@ export function ChatInterface({ conversationId: initialConversationId }: ChatInt
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
+          <div className="text-center text-muted-foreground py-8">
             <p className="mb-2">Start a conversation with your AI agent</p>
             <p className="text-sm">
               Ask questions about AI services or get help with API operations
@@ -302,8 +302,8 @@ export function ChatInterface({ conversationId: initialConversationId }: ChatInt
             >
               <div
                 className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-700 text-gray-100"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-foreground"
                   }`}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -439,7 +439,7 @@ export function ChatInterface({ conversationId: initialConversationId }: ChatInt
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-slate-700 p-4">
+      <div className="border-t border-border p-4">
         <div className="flex space-x-2">
           <input
             type="text"
@@ -447,18 +447,18 @@ export function ChatInterface({ conversationId: initialConversationId }: ChatInt
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+            className="flex-1 px-4 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
             disabled={loading}
           />
           <button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Send
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-muted-foreground mt-2">
           Your personal AI agent • Conversation ID: {currentConversationId || "New"}
         </p>
       </div>
