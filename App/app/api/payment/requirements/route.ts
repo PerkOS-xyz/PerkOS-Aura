@@ -56,23 +56,25 @@ export async function GET(request: NextRequest) {
     // Return x402 v2 compliant payment requirements
     return NextResponse.json({
       x402Version: 2,
-      // Facilitator uses this to verify signatures correctly
-      name: tokenName,
-      version: tokenVersion
-    }
-        }
-      ]
-});
+      tokenName,
+      tokenVersion,
+      contracts: [
+        {
+          address: usdcAddress,
+          chainId: routeConfig.network === "avalanche" ? 43114 : routeConfig.network === "base" ? 8453 : 42220,
+        },
+      ],
+    });
   } catch (error) {
-  console.error("Payment requirements error:", error);
-  return NextResponse.json(
-    {
-      x402Version: 2,
-      accepts: [],
-      error: error instanceof Error ? error.message : "Failed to get payment requirements",
-    },
-    { status: 500 }
-  );
-}
+    console.error("Payment requirements error:", error);
+    return NextResponse.json(
+      {
+        x402Version: 2,
+        accepts: [],
+        error: error instanceof Error ? error.message : "Failed to get payment requirements",
+      },
+      { status: 500 }
+    );
+  }
 }
 
