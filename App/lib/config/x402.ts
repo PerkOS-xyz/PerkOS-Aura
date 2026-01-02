@@ -37,33 +37,41 @@ export const x402Config: PaymentConfig = {
   priceUsd: requiredEnvVars.PAYMENT_PRICE_USD,
 };
 
+// Helper to parse price from env with fallback
+const parsePrice = (envVar: string | undefined, fallback: number): number => {
+  if (!envVar) return fallback;
+  const parsed = parseFloat(envVar);
+  return isNaN(parsed) ? fallback : parsed;
+};
+
 // AI Service Pricing Configuration (ALL 20 SERVICES)
+// All prices configurable via environment variables with sensible defaults
 export const aiServiceConfig = {
-  // Original 4 services
-  analyzePriceUsd: 0.05,
-  generatePriceUsd: 0.15,
-  transcribePriceUsd: 0.04,
-  synthesizePriceUsd: 0.04,
-  // Batch 1: NLP Services
-  summarizePriceUsd: 0.03,
-  translatePriceUsd: 0.03,
-  sentimentPriceUsd: 0.02,
-  moderatePriceUsd: 0.01,
-  // Batch 2: More NLP + Business
-  simplifyPriceUsd: 0.02,
-  extractPriceUsd: 0.03,
-  emailGeneratePriceUsd: 0.02,
-  productDescribePriceUsd: 0.03,
-  // Batch 3: Developer Tools
-  codeGeneratePriceUsd: 0.08,
-  codeReviewPriceUsd: 0.05,
-  sqlGeneratePriceUsd: 0.03,
-  regexGeneratePriceUsd: 0.02,
-  // Batch 4: Advanced
-  seoOptimizePriceUsd: 0.05,
-  quizGeneratePriceUsd: 0.05,
-  docsGeneratePriceUsd: 0.05,
-  ocrPriceUsd: 0.04,
+  // Vision & Audio Services
+  analyzePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_ANALYZE_PRICE_USD, 0.05),
+  generatePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_GENERATE_PRICE_USD, 0.15),
+  transcribePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_TRANSCRIBE_PRICE_USD, 0.04),
+  synthesizePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_SYNTHESIZE_PRICE_USD, 0.04),
+  // NLP Services
+  summarizePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_SUMMARIZE_PRICE_USD, 0.03),
+  translatePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_TRANSLATE_PRICE_USD, 0.03),
+  sentimentPriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_SENTIMENT_PRICE_USD, 0.02),
+  moderatePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_MODERATE_PRICE_USD, 0.01),
+  simplifyPriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_SIMPLIFY_PRICE_USD, 0.02),
+  extractPriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_EXTRACT_PRICE_USD, 0.03),
+  // Business Tools
+  emailGeneratePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_EMAIL_GENERATE_PRICE_USD, 0.02),
+  productDescribePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_PRODUCT_DESCRIBE_PRICE_USD, 0.03),
+  seoOptimizePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_SEO_OPTIMIZE_PRICE_USD, 0.05),
+  // Developer Tools
+  codeGeneratePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_CODE_GENERATE_PRICE_USD, 0.08),
+  codeReviewPriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_CODE_REVIEW_PRICE_USD, 0.05),
+  sqlGeneratePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_SQL_GENERATE_PRICE_USD, 0.03),
+  regexGeneratePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_REGEX_GENERATE_PRICE_USD, 0.02),
+  docsGeneratePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_DOCS_GENERATE_PRICE_USD, 0.05),
+  // Advanced Services
+  ocrPriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_OCR_PRICE_USD, 0.04),
+  quizGeneratePriceUsd: parsePrice(process.env.NEXT_PUBLIC_AI_QUIZ_GENERATE_PRICE_USD, 0.05),
 };
 
 // Service discovery configuration

@@ -33,7 +33,7 @@ Test script for the `/api/balance/check` endpoint with x402 payment signing.
 npm run test:chat
 
 # Test with custom message
-npm run test:chat "Hello, can you help me create a token?"
+npm run test:chat "Hello, can you help me with image analysis?"
 
 # Or use npx tsx directly
 npx tsx scripts/test-chat.ts "What's my USDC balance?"

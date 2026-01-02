@@ -1,6 +1,6 @@
 # elizaOS Integration Guide
 
-This document outlines how to properly integrate elizaOS framework into the Token Service API.
+This document outlines how to properly integrate elizaOS framework into the PerkOS AI Vendor Service.
 
 ## Overview
 
@@ -10,7 +10,7 @@ Based on the [elizaOS documentation](https://docs.elizaos.ai/runtime/core), we n
 2. **Implement Database Adapter** - For user-isolated memory storage
 3. **Use Memory System** - For conversations and knowledge
 4. **Use Model Management** - Instead of direct OpenAI calls
-5. **Integrate MCP Plugin** - For token operations
+5. **Integrate AI Actions** - For AI service operations
 
 ## Architecture
 
@@ -19,7 +19,7 @@ ElizaService (per user)
   └── AgentRuntime
       ├── SupabaseAdapter (user-isolated)
       ├── Character (agent personality)
-      ├── Plugins (MCP plugin for tokens)
+      ├── Plugins (AI service actions)
       └── Model Provider (OpenAI)
 ```
 
@@ -36,7 +36,7 @@ npm install @elizaos/core@1.7.0
 The `SupabaseAdapter` implements `IDatabaseAdapter` interface:
 - `createMemory()` - Store conversation messages
 - `searchMemories()` - Search conversation history
-- `createEntity()` - Store entities (tokens, users, etc.)
+- `createEntity()` - Store entities (AI requests, users, etc.)
 - `createFact()` - Store extracted facts
 - `createRelationship()` - Store entity relationships
 
@@ -52,7 +52,7 @@ const adapter = new SupabaseAdapter(userWalletAddress);
 const runtime = new AgentRuntime({
   databaseAdapter: adapter,
   character: {
-    name: "Token Assistant",
+    name: "AI Service Assistant",
     // ... character config
   },
   // ... other config
@@ -78,18 +78,18 @@ await runtime.processActions(memory, [], state);
 const response = await runtime.generateResponse(memory, state);
 ```
 
-### 5. Integrate MCP Plugin
+### 5. Integrate AI Service Actions
 
-The MCP plugin should be registered as an elizaOS Action:
+AI service actions should be registered as elizaOS Actions:
 
 ```typescript
 runtime.registerAction({
-  name: "create_token",
-  description: "Create ERC20 token",
+  name: "analyze_image",
+  description: "Analyze image with GPT-4o vision",
   handler: async (runtime, message, state) => {
-    // Call MCP plugin
+    // Call AI service
     // Make x402 payment
-    // Deploy token
+    // Return analysis result
   },
 });
 ```

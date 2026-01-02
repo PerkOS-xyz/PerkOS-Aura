@@ -453,23 +453,26 @@ export async function verifyX402Payment(
   envelope?: PaymentEnvelope;
   paymentResponseHeader?: string; // V2: PAYMENT-RESPONSE header value
 }> {
-  const routeConfig = paymentRoutes[route as keyof typeof paymentRoutes];
-  if (!routeConfig) {
+  const routePrice = paymentRoutes[route as keyof typeof paymentRoutes];
+  if (routePrice === undefined) {
     // Route not configured for payment, allow through
     return { isValid: true };
   }
+
+  // Build route config from price
+  const priceString = `$${routePrice}`;
 
   // Extract payment envelope
   const envelope = extractPaymentEnvelope(request);
   if (!envelope) {
     return {
       isValid: false,
-      response: create402Response(route, routeConfig.price, routeConfig.network),
+      response: create402Response(route, priceString, x402Config.network),
     };
   }
 
   // Verify payment
-  const verification = await verifyPayment(envelope, route, routeConfig.price);
+  const verification = await verifyPayment(envelope, route, priceString);
   if (!verification.isValid) {
     return {
       isValid: false,

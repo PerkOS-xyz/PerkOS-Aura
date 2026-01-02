@@ -35,7 +35,7 @@ Each endpoint in the `endpoints` array must have:
 
 ```typescript
 {
-  path: string;                    // e.g., "/api/tokens/create"
+  path: string;                    // e.g., "/api/ai/analyze"
   method: "GET" | "POST" | "PUT" | "DELETE";
   description: string;              // Human-readable description
   priceUsd: string;                 // Price in USD (use "0" for free endpoints)
@@ -49,33 +49,32 @@ Each endpoint in the `endpoints` array must have:
 ```json
 {
   "url": "https://your-api.com",
-  "name": "PerkOS Vendor API",
-  "description": "ERC20 Token Creation and Distribution Service",
-  "category": "api",
-  "tags": ["erc20", "tokens", "x402"],
+  "name": "PerkOS AI Vendor Service",
+  "description": "20 AI Services with x402 Micropayments",
+  "category": "ai",
+  "tags": ["ai", "gpt-4o", "dall-e", "whisper", "x402"],
   "walletAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7",
   "network": "avalanche",
   "facilitatorUrl": "https://stack.perkos.xyz",
   "endpoints": [
     {
-      "path": "/api/tokens/create",
+      "path": "/api/ai/analyze",
       "method": "POST",
-      "description": "Create a new ERC20 token",
-      "priceUsd": "0.10",
+      "description": "Analyze images with GPT-4o vision",
+      "priceUsd": "0.05",
       "inputSchema": {
         "type": "object",
-        "required": ["name", "symbol", "totalSupply"],
+        "required": ["image"],
         "properties": {
-          "name": { "type": "string" },
-          "symbol": { "type": "string" },
-          "totalSupply": { "type": "string" }
+          "image": { "type": "string", "description": "Base64 encoded image" },
+          "prompt": { "type": "string", "description": "Optional analysis prompt" }
         }
       },
       "outputSchema": {
         "type": "object",
         "properties": {
           "success": { "type": "boolean" },
-          "token": { "type": "object" }
+          "data": { "type": "object" }
         }
       }
     }

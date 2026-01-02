@@ -67,15 +67,15 @@ npm run test:balance celo-sepolia
    }
 ```
 
-## Test Token Creation Endpoint
+## Test AI Endpoints
 
-To test token creation, you'll need to create a similar script or use the API directly. The token creation endpoint requires x402 payment ($0.10 USD).
+To test AI endpoints, you can use similar test scripts. For example, the image analysis endpoint requires x402 payment ($0.05 USD).
 
 **Manual test with curl:**
 
 ```bash
 # Step 1: Get payment requirements
-curl "http://localhost:3000/api/payment/requirements?endpoint=/api/tokens/create&method=POST"
+curl "http://localhost:3000/api/payment/requirements?endpoint=/api/ai/analyze&method=POST"
 
 # Step 2: Sign the payment envelope (use the test script pattern)
 # Step 3: Make the request with X-Payment header

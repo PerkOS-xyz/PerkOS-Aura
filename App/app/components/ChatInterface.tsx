@@ -291,7 +291,7 @@ export function ChatInterface({ conversationId: initialConversationId }: ChatInt
           <div className="text-center text-gray-500 py-8">
             <p className="mb-2">Start a conversation with your AI agent</p>
             <p className="text-sm">
-              Ask questions, create tokens, or get help with API operations
+              Ask questions about AI services or get help with API operations
             </p>
           </div>
         ) : (
