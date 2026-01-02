@@ -21,6 +21,13 @@ const nextConfig = {
         tls: false,
       };
     }
+
+    // Suppress pino-pretty optional dependency warning
+    config.ignoreWarnings = [
+      { module: /node_modules\/pino\/lib\/tools\.js/ },
+      /Can't resolve 'pino-pretty'/,
+    ];
+
     return config;
   },
 };
