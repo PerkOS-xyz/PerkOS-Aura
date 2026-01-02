@@ -32,10 +32,10 @@ export default function Home() {
         <section className="container mx-auto px-4 py-20">
           <div className="max-w-6xl mx-auto text-center">
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent leading-tight">
-              {hero.title || "Create ERC20 Tokens with x402 Payments"}
+              {hero.title || "20 AI Services with x402 Micropayments"}
             </h1>
             <p className="text-xl md:text-2xl text-gray-300 mb-4 max-w-3xl mx-auto">
-              {hero.subtitle || "Build your token economy with gasless micropayments"}
+              {hero.subtitle || "Powerful AI capabilities powered by GPT-4o, DALL-E 3, and Whisper"}
             </p>
             <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto">
               {hero.description || ""}
@@ -120,14 +120,14 @@ export default function Home() {
                 </div>
 
                 {/* Code Example */}
-                {mcp.codeExample && (
+                {(mcp as any).codeExample && (
                   <div className="mt-6">
                     <h3 className="text-lg font-semibold text-gray-200 mb-3">
                       Configuration Example
                     </h3>
                     <pre className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 overflow-x-auto">
                       <code className="text-cyan-400 text-sm">
-                        {mcp.codeExample.code}
+                        {(mcp as any).codeExample.code}
                       </code>
                     </pre>
                   </div>

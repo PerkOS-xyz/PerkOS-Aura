@@ -1,9 +1,9 @@
 {
   "service": {
-    "name": "Token Service API",
-    "tagline": "Create and manage ERC20 tokens with x402 payments",
-    "description": "A complete x402 vendor API template with ERC20 token creation, distribution, and elizaOS agent integration",
-    "version": "1.0.0"
+    "name": "PerkOS AI Vendor Service",
+    "tagline": "20 AI Services with x402 Micropayments",
+    "description": "Production-ready AI service platform with GPT-4o, DALL-E 3, Whisper, and more - all with seamless crypto micropayments",
+    "version": "2.0.0"
   },
   "branding": {
     "logo": "/logo.png",
@@ -57,48 +57,74 @@
   ],
   "examples": [
     {
-      "name": "Create Token",
-      "description": "Create a new ERC20 token with custom name and symbol",
-      "endpoint": "/api/tokens/create",
+      "name": "Image Analysis",
+      "description": "Analyze images with GPT-4o Vision",
+      "endpoint": "/api/ai/analyze",
       "method": "POST",
       "request": {
-        "name": "My Token",
-        "symbol": "MTK",
-        "totalSupply": "1000000",
-        "decimals": 18
+        "image": "data:image/jpeg;base64,...",
+        "prompt": "Describe this image"
       },
       "response": {
-        "tokenAddress": "0x...",
-        "name": "My Token",
-        "symbol": "MTK",
-        "totalSupply": "1000000000000000000000000"
-      },
-      "price": "$0.10"
-    },
-    {
-      "name": "Distribute Tokens",
-      "description": "Distribute tokens to multiple wallet addresses",
-      "endpoint": "/api/tokens/distribute",
-      "method": "POST",
-      "request": {
-        "tokenAddress": "0x...",
-        "recipients": [
-          {
-            "address": "0x123...",
-            "amount": "1000"
-          },
-          {
-            "address": "0x456...",
-            "amount": "2000"
-          }
-        ]
-      },
-      "response": {
-        "transactionHash": "0x...",
-        "distributed": 2,
-        "totalAmount": "3000"
+        "success": true,
+        "data": {
+          "analysis": "The image shows...",
+          "confidence": 0.95
+        }
       },
       "price": "$0.05"
+    },
+    {
+      "name": "Code Generation",
+      "description": "Generate code from natural language descriptions",
+      "endpoint": "/api/ai/code/generate",
+      "method": "POST",
+      "request": {
+        "description": "Create a function that validates email addresses",
+        "language": "typescript"
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "code": "function validateEmail(email: string): boolean {...}",
+          "language": "typescript"
+        }
+      },
+      "price": "$0.08"
+    },
+    {
+      "name": "Text Summarization",
+      "description": "Summarize long text into concise summaries",
+      "endpoint": "/api/ai/summarize",
+      "method": "POST",
+      "request": {
+        "text": "Your long text here...",
+        "length": "short"
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "summary": "Concise summary of the text..."
+        }
+      },
+      "price": "$0.03"
+    },
+    {
+      "name": "Image Generation",
+      "description": "Generate images with DALL-E 3",
+      "endpoint": "/api/ai/generate",
+      "method": "POST",
+      "request": {
+        "prompt": "A futuristic city at sunset",
+        "size": "1024x1024"
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "imageUrl": "https://..."
+        }
+      },
+      "price": "$0.15"
     }
   ],
   "swagger": {
@@ -115,7 +141,7 @@
     "website": "https://perkos.io"
   },
   "footer": {
-    "copyright": "© 2025 PerkOS AI Vendor Service",
+    "copyright": "© 2026 PerkOS AI Vendor Service",
     "links": [
       {
         "text": "Documentation",

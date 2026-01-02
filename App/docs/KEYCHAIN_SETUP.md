@@ -70,7 +70,7 @@ npm run keychain:delete
 ## How It Works
 
 1. **Storage**: Private key is stored in macOS Keychain under:
-   - Service: `PerkOS-Token-Api-Service`
+   - Service: `PerkOS-AI-Vendor-Service`
    - Account: `TEST_PRIVATE_KEY`
 
 2. **Retrieval**: Scripts automatically check Keychain first, then fall back to:

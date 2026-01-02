@@ -61,7 +61,7 @@ The chat agent uses OpenAI's API. You can skip this if you don't need the chat f
 OPENROUTER_API_KEY=sk-or-...your-api-key...
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1  # Optional: override base URL
 OPENROUTER_REFERER=http://localhost:3000         # Optional: your app URL
-OPENROUTER_TITLE=Token Service API Agent         # Optional: app name
+OPENROUTER_TITLE=PerkOS AI Vendor Service         # Optional: app name
 
 # Optional fallback (if you still want to support OpenAI directly)
 # OPENAI_API_KEY=sk-...your-openai-key...

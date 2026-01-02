@@ -5,11 +5,11 @@
 1. **Installed @elizaos/core** (v1.7.0)
 2. **Created SupabaseAdapter** - Implements IDatabaseAdapter for user-isolated memory storage
 3. **Created Character Configuration** - Defines agent personality and behavior
-4. **Created Token Actions** - elizaOS Actions for token operations:
-   - `create_token` - Create ERC20 tokens
-   - `list_tokens` - List user's tokens
-   - `get_token_info` - Get token details
-   - `distribute_tokens` - Distribute tokens to wallets
+4. **Created AI Service Actions** - elizaOS Actions for AI service operations:
+   - `analyze_image` - Analyze images with GPT-4o vision
+   - `generate_image` - Generate images with DALL-E 3
+   - `transcribe_audio` - Transcribe audio with Whisper
+   - `synthesize_speech` - Generate speech with TTS
 5. **Created AgentRuntimeManager** - Manages per-user AgentRuntime instances
 6. **Created ElizaServiceV2** - Full elizaOS integration using AgentRuntime
 7. **Updated Chat API Route** - Supports both V1 (simplified) and V2 (full elizaOS) with automatic fallback
@@ -44,10 +44,10 @@ AgentRuntime
 - `SupabaseAdapter` filters all queries by `user_wallet_address`
 - No data mixing between users
 
-### Token Operations
-- Actions integrate with existing MCP plugin
+### AI Service Operations
+- Actions integrate with 20 AI endpoints
 - Actions can trigger x402 payments
-- Actions use `TokenService` for actual operations
+- Actions use OpenAI API for actual AI operations
 
 ### Memory System
 - Uses elizaOS Memory system
@@ -63,7 +63,7 @@ The system automatically uses elizaOS V2 if available, with fallback to V1:
 const response = await fetch("/api/chat", {
   method: "POST",
   body: JSON.stringify({
-    message: "Create a token called MyToken",
+    message: "Analyze this image for me",
     walletAddress: "0x...",
   }),
 });

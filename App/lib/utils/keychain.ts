@@ -7,7 +7,7 @@
 
 import { execSync } from "child_process";
 
-const KEYCHAIN_SERVICE = "PerkOS-Token-Api-Service";
+const KEYCHAIN_SERVICE = "PerkOS-AI-Vendor-Service";
 const KEYCHAIN_ACCOUNT = "TEST_PRIVATE_KEY";
 
 /**

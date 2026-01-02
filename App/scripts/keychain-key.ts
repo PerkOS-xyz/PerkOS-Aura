@@ -43,7 +43,7 @@ try {
 
       storePrivateKeyInKeychain(input);
       console.log("\n✅ Private key stored in macOS Keychain");
-      console.log("   Service: PerkOS-Token-Api-Service");
+      console.log("   Service: PerkOS-AI-Vendor-Service");
       console.log("   Account: TEST_PRIVATE_KEY");
       console.log("\n💡 You can now remove TEST_PRIVATE_KEY from your .env file");
       break;
@@ -77,7 +77,7 @@ try {
     console.error("\n💡 Troubleshooting:");
     console.error("   - Make sure you're on macOS");
     console.error("   - Grant Terminal/Node access to Keychain when prompted");
-    console.error("   - Check Keychain Access app for 'PerkOS-Token-Api-Service'");
+    console.error("   - Check Keychain Access app for 'PerkOS-AI-Vendor-Service'");
   }
   
   process.exit(1);
