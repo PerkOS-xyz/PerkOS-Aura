@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { PaymentButton } from "./PaymentButton";
+import { ServiceSelector } from "./ServiceSelector";
 import type { PaymentRequirements } from "@/lib/utils/x402-payment";
 
 interface Message {
@@ -247,15 +248,20 @@ export function ChatInterface({
     try {
       // Convert blob to file
       const audioFile = new File([audioBlob], "recording.webm", { type: audioBlob.type });
+
+      // Upload file first
+      const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
+      const audioUrl = await uploadFile(audioFile, conversationIdForUpload);
+
       const formData = new FormData();
-      formData.append("file", audioFile);
+      formData.append("audioUrl", audioUrl);
       formData.append("walletAddress", account.address);
-      formData.append("conversationId", currentConversationId || generateConversationId() || "");
+      formData.append("conversationId", conversationIdForUpload);
       if (projectId) {
         formData.append("projectId", projectId);
       }
 
-      // Call chat API with audio
+      // Call chat API with audio URL
       const response = await fetch("/api/chat/audio", {
         method: "POST",
         body: formData,
@@ -385,19 +391,23 @@ export function ChatInterface({
       let data;
 
       if (fileToSend) {
-        // Send with image attachment
-        const formData = new FormData();
-        formData.append("walletAddress", account.address);
-        formData.append("conversationId", currentConversationId || generateConversationId() || "");
-        formData.append("message", messageText || "Analyze this image");
-        formData.append("image", fileToSend);
-        if (projectId) {
-          formData.append("projectId", projectId);
-        }
+        // Upload file first
+        const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
+        const imageUrl = await uploadFile(fileToSend, conversationIdForUpload);
 
+        // Send with image URL via JSON
         response = await fetch("/api/chat/image", {
           method: "POST",
-          body: formData,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            walletAddress: account.address,
+            conversationId: conversationIdForUpload,
+            message: messageText || "Analyze this image",
+            imageUrl: imageUrl,
+            projectId: projectId || null
+          }),
         });
       } else {
         // Send text-only message
@@ -507,6 +517,28 @@ export function ChatInterface({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  // Handle file upload
+  const uploadFile = async (file: File, conversationId: string): Promise<string> => {
+    if (!account?.address) throw new Error("Wallet not connected");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("conversationId", conversationId);
+    formData.append("walletAddress", account.address);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Upload failed");
+    }
+
+    return data.url;
+  };
+
   if (!account?.address) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -515,32 +547,136 @@ export function ChatInterface({
     );
   }
 
+  // Welcome / Empty State
+  if (messages.length === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto bg-background p-4 flex flex-col items-center justify-center min-h-0">
+        <div className="w-full max-w-3xl space-y-8 animate-fadeIn">
+          {/* Hero Section */}
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+              Hello, {account.address.slice(0, 4)}...
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              How can I help you today?
+            </p>
+          </div>
+
+          {/* Central Input */}
+          <div className="relative max-w-2xl mx-auto w-full">
+            <div className="relative flex items-center bg-muted/50 border border-border rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all p-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={recordingState === "recording" ? "Recording..." : "Ask anything..."}
+                className="flex-1 bg-transparent border-none text-lg px-4 py-3 focus:outline-none placeholder-muted-foreground"
+                disabled={loading || recordingState !== "idle"}
+                autoFocus
+              />
+              <div className="flex items-center gap-2 pr-2">
+                {/* File attachment button */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading || recordingState !== "idle"}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-background rounded-full transition-colors"
+                  title="Attach image"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
+
+                {/* Microphone button */}
+                <button
+                  onClick={recordingState === "recording" ? stopRecording : startRecording}
+                  disabled={loading || recordingState === "processing"}
+                  className={`p-2 rounded-full transition-colors ${recordingState === "recording"
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background"
+                    } disabled:opacity-50`}
+                  title={recordingState === "recording" ? "Stop recording" : "Start recording"}
+                >
+                  {recordingState === "processing" ? (
+                    <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() && !attachedFile && recordingState === "idle"}
+                  className="p-2 bg-primary text-primary-foreground rounded-xl disabled:opacity-50 hover:opacity-90 transition-opacity"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Recording indicator */}
+            {recordingState === "recording" && (
+              <div className="absolute top-full left-0 right-0 mt-2 text-center">
+                <span className="text-sm text-red-500 font-medium bg-red-50 px-2 py-1 rounded-full">
+                  Recording: {formatTime(recordingTime)}
+                </span>
+              </div>
+            )}
+
+            {/* Attachment Preview (Central) */}
+            {attachedPreview && (
+              <div className="absolute top-full left-0 mt-2 p-2 bg-card border border-border rounded-lg shadow-lg z-10 flex items-center gap-2">
+                <img src={attachedPreview} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                <span className="text-xs text-muted-foreground max-w-[150px] truncate">{attachedFile?.name}</span>
+                <button onClick={removeAttachment} className="ml-2 text-destructive hover:text-destructive/80">✕</button>
+              </div>
+            )}
+          </div>
+
+          {/* Service Selector */}
+          <div className="pt-8">
+            <ServiceSelector onSelect={(prompt) => {
+              setInput(prompt);
+            }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scroll-smooth">
-        {messages.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            <p className="mb-2">Start a conversation with your AI agent</p>
-            <p className="text-sm mb-4">
-              Ask questions about AI services or get help with API operations
-            </p>
-            <div className="flex justify-center gap-4 text-xs">
-              <span className="px-2 py-1 bg-muted rounded">🎤 Voice input</span>
-              <span className="px-2 py-1 bg-muted rounded">📎 Image analysis</span>
-              <span className="px-2 py-1 bg-muted rounded">💬 Text chat</span>
-            </div>
-          </div>
-        ) : (
-          messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0 scroll-smooth">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${message.role === "user" ? "items-end" : "items-start"}`}>
               <div
-                className={`max-w-[80%] sm:max-w-[75%] rounded-lg px-4 py-2 ${message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground"
+                className={`rounded-2xl px-5 py-3 shadow-sm ${message.role === "user"
+                  ? "bg-primary text-primary-foreground rounded-br-none"
+                  : "bg-muted text-foreground rounded-bl-none"
                   }`}
               >
                 {/* Show image preview if attached */}
@@ -549,13 +685,14 @@ export function ChatInterface({
                     <img
                       src={message.attachmentPreview}
                       alt="Attached"
-                      className="max-w-full max-h-48 rounded object-contain"
+                      className="max-w-full max-h-48 rounded-lg object-contain bg-background/50"
                     />
                   </div>
                 )}
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.content}</p>
+
                 {message.paymentRequest && (
-                  <div className="mt-3">
+                  <div className="mt-3 pt-2 border-t border-border/20">
                     <PaymentButton
                       requirements={message.paymentRequest}
                       onPaymentSigned={async (envelope) => {
@@ -609,50 +746,48 @@ export function ChatInterface({
                     />
                   </div>
                 )}
-                <p className="text-xs opacity-70 mt-1">
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </p>
               </div>
+              <span className="text-[10px] text-muted-foreground mt-1 opacity-70 px-1">
+                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
-          ))
-        )}
+          </div>
+        ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-muted rounded-lg px-4 py-2">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
-              </div>
+            <div className="bg-muted rounded-2xl rounded-bl-none px-4 py-3 flex items-center space-x-2">
+              <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" />
+              <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+              <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Attachment Preview */}
+      {/* Attachment Preview (Bottom Bar) */}
       {attachedPreview && (
-        <div className="px-3 sm:px-4 py-2 border-t border-border bg-card">
-          <div className="relative inline-block">
+        <div className="px-4 py-2 border-t border-border bg-card/50 backdrop-blur-sm">
+          <div className="relative inline-block group">
             <img
               src={attachedPreview}
               alt="Preview"
-              className="max-h-24 rounded object-contain"
+              className="max-h-20 rounded-lg border border-border"
             />
             <button
               onClick={removeAttachment}
-              className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full text-xs hover:bg-destructive/90 transition-colors flex items-center justify-center"
+              className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full text-xs shadow-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
             >
               ✕
             </button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 truncate">{attachedFile?.name}</p>
+          <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">{attachedFile?.name}</p>
         </div>
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border p-3 sm:p-4 flex-shrink-0 bg-card">
-        <div className="flex items-center space-x-2">
+      <div className="p-4 bg-background">
+        <div className="max-w-4xl mx-auto flex items-end gap-2 bg-muted/30 border border-border rounded-2xl p-2 shadow-sm focus-within:ring-1 focus-within:ring-primary/20 transition-shadow">
           {/* File attachment button */}
           <input
             ref={fileInputRef}
@@ -664,7 +799,7 @@ export function ChatInterface({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || recordingState !== "idle"}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors disabled:opacity-50"
+            className="p-3 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-colors disabled:opacity-50"
             title="Attach image"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -676,9 +811,9 @@ export function ChatInterface({
           <button
             onClick={recordingState === "recording" ? stopRecording : startRecording}
             disabled={loading || recordingState === "processing"}
-            className={`p-2 rounded-lg transition-colors ${recordingState === "recording"
-              ? "bg-red-500 text-white animate-pulse"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            className={`p-3 rounded-xl transition-colors ${recordingState === "recording"
+              ? "bg-red-500/10 text-red-500 animate-pulse ring-1 ring-red-500"
+              : "text-muted-foreground hover:text-primary hover:bg-primary/10"
               } disabled:opacity-50`}
             title={recordingState === "recording" ? "Stop recording" : "Start recording"}
           >
@@ -699,34 +834,42 @@ export function ChatInterface({
 
           {/* Recording indicator */}
           {recordingState === "recording" && (
-            <span className="text-sm text-red-500 font-medium">
+            <span className="text-sm text-red-500 font-medium self-center px-2">
               {formatTime(recordingTime)}
             </span>
           )}
 
           {/* Text input */}
-          <input
-            type="text"
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder={recordingState === "recording" ? "Recording..." : "Type your message..."}
-            className="flex-1 px-3 sm:px-4 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm sm:text-base"
+            rows={1}
+            className="flex-1 max-h-32 px-3 py-3 bg-transparent border-none text-foreground placeholder-muted-foreground focus:outline-none focus:ring-0 text-sm sm:text-base resize-none"
             disabled={loading || recordingState !== "idle"}
+            style={{ minHeight: '44px' }}
           />
 
           {/* Send button */}
           <button
             onClick={handleSend}
             disabled={loading || recordingState !== "idle" || (!input.trim() && !attachedFile)}
-            className="px-4 sm:px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium"
+            className="p-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
           >
-            Send
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
           </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 hidden sm:block">
-          Your personal AI agent • Wallet: {account.address.slice(0, 6)}...{account.address.slice(-4)} •
-          Conversation: {currentConversationId?.slice(0, 20) || "New"}...
+        <p className="text-center text-[10px] sm:text-xs text-muted-foreground mt-3 opacity-60">
+          AI agents can make mistakes. Please verify important information.
         </p>
       </div>
     </div>

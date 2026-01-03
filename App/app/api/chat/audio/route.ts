@@ -14,14 +14,15 @@ export async function POST(request: NextRequest) {
   try {
     // Parse Form Data
     const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | null;
+    const audioUrl = formData.get("audioUrl") as string | null;
     const walletAddress = formData.get("walletAddress") as string;
     const conversationId = formData.get("conversationId") as string;
 
     // Validate required fields
-    if (!file) {
+    if (!file && !audioUrl) {
       return NextResponse.json(
-        { error: "Validation error", message: "Audio file is required" },
+        { error: "Validation error", message: "Audio file or URL is required" },
         { status: 400 }
       );
     }
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
 
     // 1. Transcribe the audio
     const aiService = getAIService();
-    const transcription = await aiService.transcribeAudio(file);
+    // Use audioUrl if available, otherwise file (fallback)
+    const transcription = await aiService.transcribeAudio(audioUrl || file!);
 
     if (!transcription || transcription.trim() === "") {
       return NextResponse.json(

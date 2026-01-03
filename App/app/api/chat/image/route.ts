@@ -7,10 +7,14 @@ export const dynamic = "force-dynamic";
 
 // Request validation schema
 const imageRequestSchema = z.object({
-  image: z.string().min(1, "Image base64 is required"),
+  image: z.string().optional(), // base64
+  imageUrl: z.string().optional(), // url
   message: z.string().optional(),
   walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Valid wallet address required"),
   conversationId: z.string().min(1, "conversationId is required"),
+}).refine(data => data.image || data.imageUrl, {
+  message: "Either image (base64) or imageUrl is required",
+  path: ["image"]
 });
 
 /**
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = imageRequestSchema.parse(body);
 
-    const { image, message, walletAddress, conversationId } = validatedData;
+    const { image, imageUrl, message, walletAddress, conversationId } = validatedData;
 
     // Verify conversation belongs to this user (user isolation)
     if (!conversationId.toLowerCase().includes(walletAddress.toLowerCase())) {
@@ -37,7 +41,8 @@ export async function POST(request: NextRequest) {
     // 1. Analyze the image
     const aiService = getAIService();
     const question = message || "Please describe and analyze this image in detail.";
-    const analysis = await aiService.analyzeImage(image, question);
+    // Use imageUrl if provided, otherwise image base64
+    const analysis = await aiService.analyzeImage(imageUrl || image!, question);
 
     if (!analysis || analysis.trim() === "") {
       return NextResponse.json(
