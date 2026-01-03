@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { getFirestoreInstance, getUserCollectionPath, COLLECTIONS } from "@/lib/db/firebase";
 import { z } from "zod";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -25,22 +26,30 @@ export async function GET(request: NextRequest) {
     const walletAddress = searchParams.get("walletAddress");
 
     const validated = getProjectsSchema.parse({ walletAddress });
+    const db = getFirestoreInstance();
+    const userWallet = validated.walletAddress.toLowerCase();
 
-    const { data, error } = await supabaseAdmin.rpc("aura_get_projects", {
-      p_user_wallet: validated.walletAddress,
+    const projectsRef = db
+      .collection(getUserCollectionPath(COLLECTIONS.PROJECTS, userWallet))
+      .orderBy("updated_at", "desc");
+
+    const snapshot = await projectsRef.get();
+
+    const projects = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        description: data.description || null,
+        created_at: data.created_at?.toDate?.()?.toISOString() || data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at?.toDate?.()?.toISOString() || data.updated_at || new Date().toISOString(),
+        conversation_count: 0, // Would need to count conversations separately
+      };
     });
-
-    if (error) {
-      console.error("Failed to get projects:", error);
-      return NextResponse.json(
-        { error: "Failed to get projects", message: error.message },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json({
       success: true,
-      projects: data || [],
+      projects,
     });
   } catch (error) {
     console.error("Get projects error:", error);
@@ -67,24 +76,26 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validated = createProjectSchema.parse(body);
+    const db = getFirestoreInstance();
+    const userWallet = validated.walletAddress.toLowerCase();
 
-    const { data, error } = await supabaseAdmin.rpc("aura_create_project", {
-      p_user_wallet: validated.walletAddress,
-      p_name: validated.name,
-      p_description: validated.description || null,
-    });
+    const projectsRef = db.collection(getUserCollectionPath(COLLECTIONS.PROJECTS, userWallet));
+    const projectRef = projectsRef.doc();
 
-    if (error) {
-      console.error("Failed to create project:", error);
-      return NextResponse.json(
-        { error: "Failed to create project", message: error.message },
-        { status: 500 }
-      );
-    }
+    const projectData = {
+      id: projectRef.id,
+      user_wallet_address: userWallet,
+      name: validated.name,
+      description: validated.description || null,
+      created_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp(),
+    };
+
+    await projectRef.set(projectData);
 
     return NextResponse.json({
       success: true,
-      projectId: data,
+      projectId: projectRef.id,
     });
   } catch (error) {
     console.error("Create project error:", error);

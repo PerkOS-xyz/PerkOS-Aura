@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { getFirestoreInstance, getUserCollectionPath, COLLECTIONS, getConversationMessagesPath } from "@/lib/db/firebase";
 import { z } from "zod";
+import { FieldValue } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -35,20 +36,23 @@ export async function GET(
       );
     }
 
-    const { data, error } = await supabaseAdmin.rpc("aura_get_project_by_id", {
-      p_user_wallet: walletAddress,
-      p_project_id: projectId,
-    });
+    const db = getFirestoreInstance();
+    const userWallet = walletAddress.toLowerCase();
+    const projectRef = db
+      .collection(getUserCollectionPath(COLLECTIONS.PROJECTS, userWallet))
+      .doc(projectId);
 
-    if (error) {
-      console.error("Failed to get project:", error);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
       return NextResponse.json(
-        { error: "Failed to get project", message: error.message },
-        { status: 500 }
+        { error: "Project not found" },
+        { status: 404 }
       );
     }
 
-    if (!data || data.length === 0) {
+    const data = projectDoc.data();
+    if (data?.user_wallet_address !== userWallet) {
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 }
@@ -57,7 +61,13 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      project: data[0],
+      project: {
+        id: projectDoc.id,
+        name: data.name,
+        description: data.description || null,
+        created_at: data.created_at?.toDate?.()?.toISOString() || data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at?.toDate?.()?.toISOString() || data.updated_at || new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error("Get project error:", error);
@@ -80,32 +90,39 @@ export async function PUT(
     const { projectId } = await params;
     const body = await request.json();
     const validated = updateProjectSchema.parse(body);
+    const db = getFirestoreInstance();
+    const userWallet = validated.walletAddress.toLowerCase();
 
-    const { data, error } = await supabaseAdmin.rpc("aura_update_project", {
-      p_project_id: projectId,
-      p_user_wallet: validated.walletAddress,
-      p_name: validated.name,
-      p_description: validated.description || null,
-    });
+    const projectRef = db
+      .collection(getUserCollectionPath(COLLECTIONS.PROJECTS, userWallet))
+      .doc(projectId);
 
-    if (error) {
-      console.error("Failed to update project:", error);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
       return NextResponse.json(
-        { error: "Failed to update project", message: error.message },
-        { status: 500 }
+        { error: "Project not found" },
+        { status: 404 }
       );
     }
 
-    if (!data) {
+    const data = projectDoc.data();
+    if (data?.user_wallet_address !== userWallet) {
       return NextResponse.json(
         { error: "Project not found or not authorized" },
         { status: 404 }
       );
     }
 
+    await projectRef.update({
+      name: validated.name,
+      description: validated.description || null,
+      updated_at: FieldValue.serverTimestamp(),
+    });
+
     return NextResponse.json({
       success: true,
-      updated: data,
+      updated: true,
     });
   } catch (error) {
     console.error("Update project error:", error);
@@ -126,7 +143,7 @@ export async function PUT(
 
 /**
  * DELETE /api/projects/[projectId]
- * Delete a project
+ * Delete a project and unlink all conversations
  */
 export async function DELETE(
   request: NextRequest,
@@ -138,30 +155,53 @@ export async function DELETE(
     const walletAddress = searchParams.get("walletAddress");
 
     const validated = deleteProjectSchema.parse({ walletAddress });
+    const db = getFirestoreInstance();
+    const userWallet = validated.walletAddress.toLowerCase();
 
-    const { data, error } = await supabaseAdmin.rpc("aura_delete_project", {
-      p_project_id: projectId,
-      p_user_wallet: validated.walletAddress,
-    });
+    const projectRef = db
+      .collection(getUserCollectionPath(COLLECTIONS.PROJECTS, userWallet))
+      .doc(projectId);
 
-    if (error) {
-      console.error("Failed to delete project:", error);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
       return NextResponse.json(
-        { error: "Failed to delete project", message: error.message },
-        { status: 500 }
+        { error: "Project not found" },
+        { status: 404 }
       );
     }
 
-    if (!data) {
+    const data = projectDoc.data();
+    if (data?.user_wallet_address !== userWallet) {
       return NextResponse.json(
         { error: "Project not found or not authorized" },
         { status: 404 }
       );
     }
 
+    // Unlink all conversations from this project
+    const conversationsRef = db
+      .collection(getUserCollectionPath(COLLECTIONS.CONVERSATIONS, userWallet))
+      .where("project_id", "==", projectId);
+
+    const conversationsSnapshot = await conversationsRef.get();
+    const batch = db.batch();
+
+    conversationsSnapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, {
+        project_id: null,
+        updated_at: FieldValue.serverTimestamp(),
+      });
+    });
+
+    // Delete the project
+    batch.delete(projectRef);
+
+    await batch.commit();
+
     return NextResponse.json({
       success: true,
-      deleted: data,
+      deleted: true,
     });
   } catch (error) {
     console.error("Delete project error:", error);

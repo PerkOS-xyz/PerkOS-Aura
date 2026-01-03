@@ -77,7 +77,7 @@ export default function DashboardPage() {
   const [creatingProject, setCreatingProject] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showConversationList, setShowConversationList] = useState(false);
-  
+
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteType, setDeleteType] = useState<"conversation" | "project" | null>(null);
@@ -126,7 +126,7 @@ export default function DashboardPage() {
         const data = await response.json();
         const fetchedConversations = data.conversations || [];
         console.log("[Dashboard] Fetched conversations:", fetchedConversations.length);
-        
+
         // Deduplicate conversations by conversation_id
         const uniqueConversations = fetchedConversations.reduce((acc: Conversation[], curr: Conversation) => {
           if (!acc.find((c) => c.conversation_id === curr.conversation_id)) {
@@ -134,14 +134,14 @@ export default function DashboardPage() {
           }
           return acc;
         }, [] as Conversation[]);
-        
+
         if (uniqueConversations.length !== fetchedConversations.length) {
           console.warn("[Dashboard] Removed duplicate conversations:", {
             original: fetchedConversations.length,
             unique: uniqueConversations.length,
           });
         }
-        
+
         if (preserveOptimistic) {
           // Merge with existing conversations, prioritizing fetched ones but keeping optimistic updates
           setConversations((prev) => {
@@ -307,7 +307,7 @@ export default function DashboardPage() {
 
     // Get the exact conversation object to ensure we have the right ID
     const conversation = conversations.find((c) => c.conversation_id === deleteId);
-    
+
     console.log("[Dashboard] Deleting conversation:", {
       deleteId,
       conversationFromList: conversation,
@@ -321,7 +321,7 @@ export default function DashboardPage() {
       // Use the exact conversation_id from the list, URL encoded
       const conversationIdToDelete = conversation?.conversation_id || deleteId;
       const encodedConversationId = encodeURIComponent(conversationIdToDelete);
-      
+
       const response = await fetch(
         `/api/conversations/${encodedConversationId}?walletAddress=${encodeURIComponent(account.address)}`,
         {
@@ -332,7 +332,7 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json();
         console.log("[Dashboard] Delete response:", data);
-        
+
         // Remove from UI immediately (optimistic update)
         // Always remove from UI, even if deletedCount is 0
         // The server refresh will confirm if it's really gone
@@ -344,7 +344,7 @@ export default function DashboardPage() {
         setDeleteId(null);
         setDeleteType(null);
         setDeleteItemName(null);
-        
+
         // Refresh from server to ensure consistency
         // Use a longer delay to allow the server to process the deletion
         // If the conversation still appears, it means the delete didn't work
@@ -354,15 +354,8 @@ export default function DashboardPage() {
       } else {
         const errorData = await response.json();
         const errorMessage = errorData.message || errorData.error || "Failed to delete conversation";
-        
-        // Check if it's a migration issue
-        if (response.status === 503 && errorData.details?.includes("RPC function")) {
-          alert(
-            `Database migration required:\n\n${errorMessage}\n\nPlease run the migration file:\nsupabase/migrations/006_aura_delete_conversation.sql`
-          );
-        } else {
-          alert(errorMessage);
-        }
+
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Failed to delete conversation:", error);
@@ -435,9 +428,8 @@ export default function DashboardPage() {
     <div className="h-full flex overflow-hidden bg-background">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarCollapsed ? "w-12" : "w-64 sm:w-72"
-        } bg-card border-r border-border flex flex-col transition-all duration-300 flex-shrink-0`}
+        className={`${sidebarCollapsed ? "w-12" : "w-64 sm:w-72"
+          } bg-card border-r border-border flex flex-col transition-all duration-300 flex-shrink-0`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -450,9 +442,8 @@ export default function DashboardPage() {
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <svg
-              className={`w-5 h-5 text-muted-foreground transition-transform ${
-                sidebarCollapsed ? "rotate-180" : ""
-              }`}
+              className={`w-5 h-5 text-muted-foreground transition-transform ${sidebarCollapsed ? "rotate-180" : ""
+                }`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -487,9 +478,8 @@ export default function DashboardPage() {
               {/* All Chats Option */}
               <button
                 onClick={() => setSelectedProject(null)}
-                className={`w-full text-left px-4 py-3 hover:bg-muted transition-colors flex items-center gap-3 ${
-                  !selectedProject ? "bg-muted border-l-2 border-primary" : ""
-                }`}
+                className={`w-full text-left px-4 py-3 hover:bg-muted transition-colors flex items-center gap-3 ${!selectedProject ? "bg-muted border-l-2 border-primary" : ""
+                  }`}
               >
                 <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -516,9 +506,8 @@ export default function DashboardPage() {
                 projects.map((project) => (
                   <div
                     key={project.id}
-                    className={`group relative ${
-                      selectedProject?.id === project.id ? "bg-muted border-l-2 border-primary" : ""
-                    }`}
+                    className={`group relative ${selectedProject?.id === project.id ? "bg-muted border-l-2 border-primary" : ""
+                      }`}
                   >
                     <button
                       onClick={() => setSelectedProject(project)}
@@ -665,9 +654,8 @@ export default function DashboardPage() {
                     conversations.map((conv) => (
                       <div
                         key={conv.conversation_id}
-                        className={`group relative w-full border-b border-border/50 ${
-                          selectedConversation === conv.conversation_id ? "bg-muted" : ""
-                        }`}
+                        className={`group relative w-full border-b border-border/50 ${selectedConversation === conv.conversation_id ? "bg-muted" : ""
+                          }`}
                       >
                         <button
                           onClick={() => {
@@ -724,9 +712,8 @@ export default function DashboardPage() {
                 conversations.map((conv) => (
                   <div
                     key={conv.conversation_id}
-                    className={`group relative w-full border-b border-border/50 ${
-                      selectedConversation === conv.conversation_id ? "bg-muted" : ""
-                    }`}
+                    className={`group relative w-full border-b border-border/50 ${selectedConversation === conv.conversation_id ? "bg-muted" : ""
+                      }`}
                   >
                     <button
                       onClick={() => {

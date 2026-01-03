@@ -6,7 +6,7 @@
  */
 
 import { AgentRuntime, MemoryType } from "@elizaos/core";
-import { SupabaseAdapter } from "./SupabaseAdapter";
+import { FirebaseAdapter } from "./FirebaseAdapter";
 import { createAIServiceCharacter } from "./character";
 import { aiActions } from "./actions";
 
@@ -28,7 +28,7 @@ export async function getAgentRuntime(userWalletAddress: string): Promise<AgentR
   }
 
   // Create database adapter for this user
-  const databaseAdapter = new SupabaseAdapter(userWalletAddress);
+  const databaseAdapter = new FirebaseAdapter(userWalletAddress);
 
   // Create character configuration
   const character = createAIServiceCharacter(userWalletAddress);
