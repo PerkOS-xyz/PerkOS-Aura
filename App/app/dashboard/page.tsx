@@ -3,6 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { ChatInterface } from "../components/ChatInterface";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Project {
   id: string;
@@ -66,6 +76,13 @@ export default function DashboardPage() {
   const [newProjectDescription, setNewProjectDescription] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showConversationList, setShowConversationList] = useState(false);
+  
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteType, setDeleteType] = useState<"conversation" | "project" | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteItemName, setDeleteItemName] = useState<string | null>(null);
 
   // Fetch projects
   const fetchProjects = useCallback(async () => {
@@ -86,10 +103,11 @@ export default function DashboardPage() {
   }, [account?.address]);
 
   // Fetch conversations for selected project
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (preserveOptimistic = false) => {
     console.log("[Dashboard] fetchConversations called", {
       hasAccount: !!account?.address,
       selectedProjectId: selectedProject?.id,
+      preserveOptimistic,
     });
 
     if (!account?.address) return;
@@ -105,8 +123,21 @@ export default function DashboardPage() {
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        console.log("[Dashboard] Fetched conversations:", data.conversations?.length || 0);
-        setConversations(data.conversations || []);
+        const fetchedConversations = data.conversations || [];
+        console.log("[Dashboard] Fetched conversations:", fetchedConversations.length);
+        
+        if (preserveOptimistic) {
+          // Merge with existing conversations, prioritizing fetched ones but keeping optimistic updates
+          setConversations((prev) => {
+            const fetchedIds = new Set(fetchedConversations.map((c: Conversation) => c.conversation_id));
+            const optimisticOnly = prev.filter((c) => !fetchedIds.has(c.conversation_id));
+            // Combine: fetched conversations first, then optimistic-only ones
+            return [...fetchedConversations, ...optimisticOnly];
+          });
+        } else {
+          // Replace entirely (normal refresh)
+          setConversations(fetchedConversations);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
@@ -137,8 +168,8 @@ export default function DashboardPage() {
       selectedConversation,
     });
 
-    // Fetch conversations
-    fetchConversations();
+    // Fetch conversations (normal refresh)
+    fetchConversations(false);
 
     // Only reset selected conversation when project actually changes (not on mount)
     if (initialLoadDoneRef.current && prevProjectId !== currentProjectId) {
@@ -170,37 +201,134 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setProjects((prev) => [data.project, ...prev]);
-        setSelectedProject(data.project);
+        // API returns projectId, so we need to fetch the full project list to get the project object
+        await fetchProjects();
+        // Find and select the newly created project
+        const projectsResponse = await fetch(`/api/projects?walletAddress=${account.address}`);
+        if (projectsResponse.ok) {
+          const projectsData = await projectsResponse.json();
+          const newProject = projectsData.projects?.find((p: Project) => p.id === data.projectId);
+          if (newProject) {
+            setSelectedProject(newProject);
+          }
+        }
         setShowNewProjectModal(false);
         setNewProjectName("");
         setNewProjectDescription("");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to create project");
       }
     } catch (error) {
       console.error("Failed to create project:", error);
+      alert("Failed to create project. Please try again.");
     } finally {
       setCreatingProject(false);
     }
   };
 
+  // Open delete confirmation dialog for project
+  const openDeleteProjectDialog = (projectId: string, projectName: string) => {
+    setDeleteType("project");
+    setDeleteId(projectId);
+    setDeleteItemName(projectName);
+    setDeleteDialogOpen(true);
+  };
+
   // Delete project
-  const handleDeleteProject = async (projectId: string) => {
-    if (!account?.address) return;
-    if (!confirm("Are you sure you want to delete this project? All conversations will be kept but unlinked.")) return;
+  const handleDeleteProject = async () => {
+    if (!account?.address || !deleteId) return;
 
     try {
-      const response = await fetch(`/api/projects/${projectId}?walletAddress=${account.address}`, {
+      const response = await fetch(`/api/projects/${deleteId}?walletAddress=${account.address}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
-        setProjects((prev) => prev.filter((p) => p.id !== projectId));
-        if (selectedProject?.id === projectId) {
+        setProjects((prev) => prev.filter((p) => p.id !== deleteId));
+        if (selectedProject?.id === deleteId) {
           setSelectedProject(null);
         }
+        setDeleteDialogOpen(false);
+        setDeleteId(null);
+        setDeleteType(null);
+        setDeleteItemName(null);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to delete project");
       }
     } catch (error) {
       console.error("Failed to delete project:", error);
+      alert("Failed to delete project. Please try again.");
+    }
+  };
+
+  // Open delete confirmation dialog for conversation
+  const openDeleteConversationDialog = (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const conversation = conversations.find((c) => c.conversation_id === conversationId);
+    setDeleteType("conversation");
+    setDeleteId(conversationId);
+    setDeleteItemName(conversation?.first_message || "conversation");
+    setDeleteDialogOpen(true);
+  };
+
+  // Delete conversation
+  const handleDeleteConversation = async () => {
+    if (!account?.address || !deleteId) return;
+
+    try {
+      const response = await fetch(
+        `/api/conversations/${deleteId}?walletAddress=${account.address}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Remove from UI immediately
+        setConversations((prev) => prev.filter((c) => c.conversation_id !== deleteId));
+        if (selectedConversation === deleteId) {
+          setSelectedConversation(null);
+        }
+        setDeleteDialogOpen(false);
+        setDeleteId(null);
+        setDeleteType(null);
+        setDeleteItemName(null);
+        
+        // Refresh from server to ensure consistency
+        // Use a small delay to allow the server to process the deletion
+        setTimeout(() => {
+          fetchConversations(false); // Normal refresh after deletion
+        }, 300);
+      } else {
+        const errorData = await response.json();
+        const errorMessage = errorData.message || errorData.error || "Failed to delete conversation";
+        
+        // Check if it's a migration issue
+        if (response.status === 503 && errorData.details?.includes("RPC function")) {
+          alert(
+            `Database migration required:\n\n${errorMessage}\n\nPlease run the migration file:\nsupabase/migrations/006_aura_delete_conversation.sql`
+          );
+        } else if (response.status === 404) {
+          // Conversation not found - might already be deleted, just refresh
+          setConversations((prev) => prev.filter((c) => c.conversation_id !== deleteId));
+          if (selectedConversation === deleteId) {
+            setSelectedConversation(null);
+          }
+          setDeleteDialogOpen(false);
+          setDeleteId(null);
+          setDeleteType(null);
+          setDeleteItemName(null);
+          fetchConversations(false);
+        } else {
+          alert(errorMessage);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+      alert("Failed to delete conversation. Please try again.");
     }
   };
 
@@ -219,10 +347,11 @@ export default function DashboardPage() {
   // Start new conversation
   const handleNewConversation = () => {
     setSelectedConversation(null);
+    setShowConversationList(false); // Close mobile conversation list
   };
 
   // Handle conversation change from ChatInterface
-  const handleConversationChange = (conversationId: string, firstMessage?: string) => {
+  const handleConversationChange = async (conversationId: string, firstMessage?: string) => {
     console.log("[Dashboard] handleConversationChange called", {
       conversationId,
       firstMessage,
@@ -232,24 +361,23 @@ export default function DashboardPage() {
     setSelectedConversation(conversationId);
 
     // Optimistically add the new conversation to the list if it doesn't exist
-    setConversations((prev) => {
-      const exists = prev.some((c) => c.conversation_id === conversationId);
-      console.log("[Dashboard] Conversation exists in list:", exists);
-      if (exists) return prev;
-
-      // Add new conversation at the top of the list
+    const exists = conversations.some((c) => c.conversation_id === conversationId);
+    if (!exists) {
       const newConversation: Conversation = {
         conversation_id: conversationId,
         first_message: firstMessage || "New conversation",
         last_message_at: new Date().toISOString(),
         message_count: 1,
       };
-      console.log("[Dashboard] Adding new conversation to list:", newConversation);
-      return [newConversation, ...prev];
-    });
+      setConversations((prev) => [newConversation, ...prev]);
+    }
 
-    // Don't fetch from server immediately - let the optimistic update stand
-    // The next page load will sync with server
+    // Refresh conversations from server to ensure we have the latest data
+    // Use preserveOptimistic=true to keep the optimistic update if server hasn't processed it yet
+    // Use a longer delay to allow the server to fully process the new conversation
+    setTimeout(() => {
+      fetchConversations(true); // preserveOptimistic = true
+    }, 1500);
   };
 
   if (!account?.address) {
@@ -264,12 +392,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-full flex overflow-hidden bg-background">
       {/* Sidebar */}
       <div
         className={`${
-          sidebarCollapsed ? "w-12" : "w-72"
-        } bg-card border-r border-border flex flex-col transition-all duration-300`}
+          sidebarCollapsed ? "w-12" : "w-64 sm:w-72"
+        } bg-card border-r border-border flex flex-col transition-all duration-300 flex-shrink-0`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -305,7 +433,7 @@ export default function DashboardPage() {
             <div className="p-3">
               <button
                 onClick={() => setShowNewProjectModal(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -315,7 +443,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Projects List */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto scroll-smooth">
               {/* All Chats Option */}
               <button
                 onClick={() => setSelectedProject(null)}
@@ -339,9 +467,9 @@ export default function DashboardPage() {
 
               {/* Project Items */}
               {loadingProjects ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">Loading projects...</div>
+                <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">Loading projects...</div>
               ) : projects.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">
+                <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">
                   No projects yet. Create one to organize your chats!
                 </div>
               ) : (
@@ -374,7 +502,7 @@ export default function DashboardPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteProject(project.id);
+                        openDeleteProjectDialog(project.id, project.name);
                       }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-red-500/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Delete project"
@@ -433,34 +561,119 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between bg-card flex-shrink-0">
-          <div>
-            <h1 className="text-xl font-bold font-heading text-foreground">
+        <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between bg-card flex-shrink-0">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold font-heading text-foreground truncate">
               {selectedProject ? selectedProject.name : "All Chats"}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {selectedProject?.description || "Your AI agent remembers your conversation history"}
             </p>
           </div>
-          <button
-            onClick={handleNewConversation}
-            className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Chat
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Mobile conversation list toggle */}
+            <button
+              onClick={() => setShowConversationList(!showConversationList)}
+              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+              title="Toggle conversations"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleNewConversation}
+              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors flex-shrink-0"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">New Chat</span>
+            </button>
+          </div>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Conversation List */}
-          <div className="w-64 border-r border-border bg-muted/30 flex flex-col flex-shrink-0">
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          {/* Mobile Conversation List Overlay */}
+          {showConversationList && (
+            <>
+              <div
+                className="md:hidden fixed inset-0 bg-black/50 z-40"
+                onClick={() => setShowConversationList(false)}
+              />
+              <div className="md:hidden fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border z-50 flex flex-col">
+                <div className="p-3 border-b border-border flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Recent Conversations</h3>
+                  <button
+                    onClick={() => setShowConversationList(false)}
+                    className="p-1 hover:bg-muted rounded transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto scroll-smooth">
+                  {loadingConversations ? (
+                    <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
+                  ) : conversations.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground text-sm">
+                      No conversations yet. Start a new chat!
+                    </div>
+                  ) : (
+                    conversations.map((conv) => (
+                      <div
+                        key={conv.conversation_id}
+                        className={`group relative w-full border-b border-border/50 ${
+                          selectedConversation === conv.conversation_id ? "bg-muted" : ""
+                        }`}
+                      >
+                        <button
+                          onClick={() => {
+                            console.log("[Dashboard] Selecting conversation:", conv.conversation_id);
+                            setSelectedConversation(conv.conversation_id);
+                            setShowConversationList(false);
+                          }}
+                          className="w-full text-left p-3 hover:bg-muted transition-colors"
+                        >
+                          <div className="text-sm text-foreground line-clamp-2">
+                            {conv.first_message || "New conversation"}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                            <span>{formatRelativeTime(conv.last_message_at)}</span>
+                            <span>•</span>
+                            <span>{conv.message_count} messages</span>
+                          </div>
+                        </button>
+                        <button
+                          onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete conversation"
+                        >
+                          <svg className="w-4 h-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Desktop Conversation List */}
+          <div className="hidden md:flex w-56 lg:w-64 border-r border-border bg-muted/30 flex flex-col flex-shrink-0">
             <div className="p-3 border-b border-border">
               <h3 className="text-sm font-medium text-muted-foreground">Recent Conversations</h3>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto scroll-smooth">
               {loadingConversations ? (
                 <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
               ) : conversations.length === 0 ? (
@@ -469,22 +682,43 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 conversations.map((conv) => (
-                  <button
+                  <div
                     key={conv.conversation_id}
-                    onClick={() => setSelectedConversation(conv.conversation_id)}
-                    className={`w-full text-left p-3 hover:bg-muted transition-colors border-b border-border/50 ${
+                    className={`group relative w-full border-b border-border/50 ${
                       selectedConversation === conv.conversation_id ? "bg-muted" : ""
                     }`}
                   >
-                    <div className="text-sm text-foreground line-clamp-2">
-                      {conv.first_message || "New conversation"}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                      <span>{formatRelativeTime(conv.last_message_at)}</span>
-                      <span>•</span>
-                      <span>{conv.message_count} messages</span>
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => {
+                        console.log("[Dashboard] Selecting conversation:", conv.conversation_id);
+                        setSelectedConversation(conv.conversation_id);
+                      }}
+                      className="w-full text-left p-3 hover:bg-muted transition-colors"
+                    >
+                      <div className="text-sm text-foreground line-clamp-2">
+                        {conv.first_message || "New conversation"}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span>{formatRelativeTime(conv.last_message_at)}</span>
+                        <span>•</span>
+                        <span>{conv.message_count} messages</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete conversation"
+                    >
+                      <svg className="w-4 h-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 ))
               )}
             </div>
@@ -554,6 +788,49 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleteType === "project" ? "Project" : "Conversation"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteType === "project" ? (
+                <>
+                  Are you sure you want to delete <strong>{deleteItemName}</strong>? All conversations will be kept but unlinked from this project.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete this conversation? This action cannot be undone.
+                  {deleteItemName && deleteItemName !== "conversation" && (
+                    <span className="block mt-2 text-xs opacity-75">
+                      Conversation: &quot;{deleteItemName}&quot;
+                    </span>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setDeleteId(null);
+              setDeleteType(null);
+              setDeleteItemName(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteType === "project" ? handleDeleteProject : handleDeleteConversation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

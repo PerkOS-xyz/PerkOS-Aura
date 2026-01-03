@@ -94,19 +94,14 @@ export function ChatInterface({
         // Mark this conversation as already in the sidebar (came from props)
         notifiedConversationsRef.current.add(initialConversationId);
 
-        // Check if this is a conversation we just created locally
-        // If so, don't reload from server - we already have the messages
-        if (locallyCreatedConversationsRef.current.has(initialConversationId)) {
-          console.log("[ChatInterface] Locally created conversation - skipping server load");
-          // Just update the current conversation ID, keep existing messages
-          setCurrentConversationId(initialConversationId);
-          hasHadConversationRef.current = true;
-          return;
-        }
-
+        // Always load from server when conversationId prop changes (user clicked on conversation in list)
+        // This ensures we get the latest messages even if we created it locally
         console.log("[ChatInterface] Loading conversation from server:", initialConversationId);
-        // Load existing conversation (user clicked on a conversation in the list)
+        // Clear existing messages first to show loading state
+        setMessages([]);
         setCurrentConversationId(initialConversationId);
+        // Remove from locallyCreated set since we're loading from server
+        locallyCreatedConversationsRef.current.delete(initialConversationId);
         loadConversationHistory(initialConversationId);
         hasHadConversationRef.current = true;
       } else if (previousId !== undefined) {
@@ -515,15 +510,15 @@ export function ChatInterface({
   if (!account?.address) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-400">Please connect your wallet to use the chat</p>
+        <p className="text-muted-foreground">Please connect your wallet to use the chat</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scroll-smooth">
         {messages.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <p className="mb-2">Start a conversation with your AI agent</p>
@@ -543,7 +538,7 @@ export function ChatInterface({
               className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${message.role === "user"
+                className={`max-w-[80%] sm:max-w-[75%] rounded-lg px-4 py-2 ${message.role === "user"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-foreground"
                   }`}
@@ -623,11 +618,11 @@ export function ChatInterface({
         )}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-slate-700 rounded-lg px-4 py-2">
+            <div className="bg-muted rounded-lg px-4 py-2">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
               </div>
             </div>
           </div>
@@ -637,7 +632,7 @@ export function ChatInterface({
 
       {/* Attachment Preview */}
       {attachedPreview && (
-        <div className="px-4 py-2 border-t border-border">
+        <div className="px-3 sm:px-4 py-2 border-t border-border bg-card">
           <div className="relative inline-block">
             <img
               src={attachedPreview}
@@ -646,17 +641,17 @@ export function ChatInterface({
             />
             <button
               onClick={removeAttachment}
-              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+              className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full text-xs hover:bg-destructive/90 transition-colors flex items-center justify-center"
             >
               ✕
             </button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{attachedFile?.name}</p>
+          <p className="text-xs text-muted-foreground mt-1 truncate">{attachedFile?.name}</p>
         </div>
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border p-4 flex-shrink-0">
+      <div className="border-t border-border p-3 sm:p-4 flex-shrink-0 bg-card">
         <div className="flex items-center space-x-2">
           {/* File attachment button */}
           <input
@@ -716,7 +711,7 @@ export function ChatInterface({
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={recordingState === "recording" ? "Recording..." : "Type your message..."}
-            className="flex-1 px-4 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
+            className="flex-1 px-3 sm:px-4 py-2 bg-muted/50 border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm sm:text-base"
             disabled={loading || recordingState !== "idle"}
           />
 
@@ -724,12 +719,12 @@ export function ChatInterface({
           <button
             onClick={handleSend}
             disabled={loading || recordingState !== "idle" || (!input.trim() && !attachedFile)}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 sm:px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium"
           >
             Send
           </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground mt-2 hidden sm:block">
           Your personal AI agent • Wallet: {account.address.slice(0, 6)}...{account.address.slice(-4)} •
           Conversation: {currentConversationId?.slice(0, 20) || "New"}...
         </p>
