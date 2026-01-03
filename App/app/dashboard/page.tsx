@@ -83,6 +83,7 @@ export default function DashboardPage() {
   const [deleteType, setDeleteType] = useState<"conversation" | "project" | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteItemName, setDeleteItemName] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch projects
   const fetchProjects = useCallback(async () => {
@@ -126,17 +127,39 @@ export default function DashboardPage() {
         const fetchedConversations = data.conversations || [];
         console.log("[Dashboard] Fetched conversations:", fetchedConversations.length);
         
+        // Deduplicate conversations by conversation_id
+        const uniqueConversations = fetchedConversations.reduce((acc: Conversation[], curr: Conversation) => {
+          if (!acc.find((c) => c.conversation_id === curr.conversation_id)) {
+            acc.push(curr);
+          }
+          return acc;
+        }, [] as Conversation[]);
+        
+        if (uniqueConversations.length !== fetchedConversations.length) {
+          console.warn("[Dashboard] Removed duplicate conversations:", {
+            original: fetchedConversations.length,
+            unique: uniqueConversations.length,
+          });
+        }
+        
         if (preserveOptimistic) {
           // Merge with existing conversations, prioritizing fetched ones but keeping optimistic updates
           setConversations((prev) => {
-            const fetchedIds = new Set(fetchedConversations.map((c: Conversation) => c.conversation_id));
+            const fetchedIds = new Set(uniqueConversations.map((c: Conversation) => c.conversation_id));
             const optimisticOnly = prev.filter((c) => !fetchedIds.has(c.conversation_id));
             // Combine: fetched conversations first, then optimistic-only ones
-            return [...fetchedConversations, ...optimisticOnly];
+            // Also deduplicate the combined result
+            const combined = [...uniqueConversations, ...optimisticOnly];
+            return combined.reduce((acc: Conversation[], curr: Conversation) => {
+              if (!acc.find((c) => c.conversation_id === curr.conversation_id)) {
+                acc.push(curr);
+              }
+              return acc;
+            }, [] as Conversation[]);
           });
         } else {
           // Replace entirely (normal refresh)
-          setConversations(fetchedConversations);
+          setConversations(uniqueConversations);
         }
       }
     } catch (error) {
@@ -275,11 +298,32 @@ export default function DashboardPage() {
 
   // Delete conversation
   const handleDeleteConversation = async () => {
-    if (!account?.address || !deleteId) return;
+    if (!account?.address || !deleteId || isDeleting) {
+      console.warn("[Dashboard] Delete blocked:", { hasAccount: !!account?.address, deleteId, isDeleting });
+      return;
+    }
+
+    setIsDeleting(true);
+
+    // Get the exact conversation object to ensure we have the right ID
+    const conversation = conversations.find((c) => c.conversation_id === deleteId);
+    
+    console.log("[Dashboard] Deleting conversation:", {
+      deleteId,
+      conversationFromList: conversation,
+      conversationIdFromList: conversation?.conversation_id,
+      match: conversation?.conversation_id === deleteId,
+      allConversationIds: conversations.map((c) => c.conversation_id),
+      conversationCount: conversations.length,
+    });
 
     try {
+      // Use the exact conversation_id from the list, URL encoded
+      const conversationIdToDelete = conversation?.conversation_id || deleteId;
+      const encodedConversationId = encodeURIComponent(conversationIdToDelete);
+      
       const response = await fetch(
-        `/api/conversations/${deleteId}?walletAddress=${account.address}`,
+        `/api/conversations/${encodedConversationId}?walletAddress=${encodeURIComponent(account.address)}`,
         {
           method: "DELETE",
         }
@@ -287,7 +331,11 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Remove from UI immediately
+        console.log("[Dashboard] Delete response:", data);
+        
+        // Remove from UI immediately (optimistic update)
+        // Always remove from UI, even if deletedCount is 0
+        // The server refresh will confirm if it's really gone
         setConversations((prev) => prev.filter((c) => c.conversation_id !== deleteId));
         if (selectedConversation === deleteId) {
           setSelectedConversation(null);
@@ -298,10 +346,11 @@ export default function DashboardPage() {
         setDeleteItemName(null);
         
         // Refresh from server to ensure consistency
-        // Use a small delay to allow the server to process the deletion
+        // Use a longer delay to allow the server to process the deletion
+        // If the conversation still appears, it means the delete didn't work
         setTimeout(() => {
           fetchConversations(false); // Normal refresh after deletion
-        }, 300);
+        }, 1000);
       } else {
         const errorData = await response.json();
         const errorMessage = errorData.message || errorData.error || "Failed to delete conversation";
@@ -311,17 +360,6 @@ export default function DashboardPage() {
           alert(
             `Database migration required:\n\n${errorMessage}\n\nPlease run the migration file:\nsupabase/migrations/006_aura_delete_conversation.sql`
           );
-        } else if (response.status === 404) {
-          // Conversation not found - might already be deleted, just refresh
-          setConversations((prev) => prev.filter((c) => c.conversation_id !== deleteId));
-          if (selectedConversation === deleteId) {
-            setSelectedConversation(null);
-          }
-          setDeleteDialogOpen(false);
-          setDeleteId(null);
-          setDeleteType(null);
-          setDeleteItemName(null);
-          fetchConversations(false);
         } else {
           alert(errorMessage);
         }
@@ -329,6 +367,8 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Failed to delete conversation:", error);
       alert("Failed to delete conversation. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -823,10 +863,18 @@ export default function DashboardPage() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={deleteType === "project" ? handleDeleteProject : handleDeleteConversation}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteType === "project") {
+                  handleDeleteProject();
+                } else {
+                  handleDeleteConversation();
+                }
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
-              Delete
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

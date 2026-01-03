@@ -39,6 +39,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log("[Get Conversations] Returning conversations:", {
+      walletAddress: validated.walletAddress,
+      walletLowercase: validated.walletAddress.toLowerCase(),
+      count: data?.length || 0,
+      conversationIds: data?.map((c: any) => c.conversation_id) || [],
+      conversations: data?.map((c: any) => ({
+        id: c.conversation_id,
+        firstMessage: c.first_message?.substring(0, 50),
+        messageCount: c.message_count,
+      })) || [],
+    });
+
     return NextResponse.json({
       success: true,
       conversations: data || [],
