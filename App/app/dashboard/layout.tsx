@@ -34,8 +34,8 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="container max-w-6xl mx-auto px-4 py-8">{children}</main>
+    <div className="h-[calc(100vh-64px)] bg-background text-foreground overflow-hidden">
+      {children}
     </div>
   );
 }
