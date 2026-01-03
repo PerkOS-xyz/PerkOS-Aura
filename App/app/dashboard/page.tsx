@@ -35,7 +35,7 @@ interface Conversation {
  */
 function formatAddress(address: string): string {
   if (!address || address.length < 12) return address;
-  return `${address.slice(0, 6)}...${address.slice(-6)}`;
+  return `${address.slice(0, 6)}...${address.slice(-5)}`;
 }
 
 /**
@@ -428,337 +428,174 @@ export default function DashboardPage() {
     <div className="h-full flex overflow-hidden bg-background">
       {/* Sidebar */}
       <div
-        className={`${sidebarCollapsed ? "w-12" : "w-64 sm:w-72"
-          } bg-card border-r border-border flex flex-col transition-all duration-300 flex-shrink-0`}
+        className={`${sidebarCollapsed ? "w-0 md:w-0" : "w-64 sm:w-72"
+          } bg-muted/30 border-r border-border flex flex-col transition-all duration-300 flex-shrink-0 absolute md:relative z-20 h-full overflow-hidden`}
       >
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <h2 className="font-semibold text-foreground">Projects</h2>
-          )}
+        <div className="p-4 flex items-center justify-between">
+          <div className="font-semibold text-lg">PerkOS AI</div>
           <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1.5 hover:bg-muted rounded transition-colors"
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setSidebarCollapsed(true)}
+            className="md:hidden p-1 hover:bg-muted rounded"
           >
-            <svg
-              className={`w-5 h-5 text-muted-foreground transition-transform ${sidebarCollapsed ? "rotate-180" : ""
-                }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-              />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {!sidebarCollapsed && (
-          <>
-            {/* New Project Button */}
-            <div className="p-3">
-              <button
-                onClick={() => setShowNewProjectModal(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                New Project
-              </button>
+        {/* New Chat & Project Buttons */}
+        <div className="px-3 pb-4 space-y-2">
+          <button
+            onClick={handleNewConversation}
+            className="w-full flex items-center gap-3 px-4 py-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all shadow-sm group"
+          >
+            <div className="bg-white/20 p-1 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
             </div>
+            <div className="text-left">
+              <div className="text-sm font-semibold">New Chat</div>
+              <div className="text-[10px] opacity-80">Start a new conversation</div>
+            </div>
+          </button>
 
-            {/* Projects List */}
-            <div className="flex-1 overflow-y-auto scroll-smooth">
-              {/* All Chats Option */}
-              <button
-                onClick={() => setSelectedProject(null)}
-                className={`w-full text-left px-4 py-3 hover:bg-muted transition-colors flex items-center gap-3 ${!selectedProject ? "bg-muted border-l-2 border-primary" : ""
-                  }`}
-              >
-                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground truncate">All Chats</div>
-                  <div className="text-xs text-muted-foreground">General conversations</div>
-                </div>
-              </button>
+          <button
+            onClick={() => setShowNewProjectModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-2 bg-card border border-border hover:bg-muted/50 rounded-xl transition-colors text-sm font-medium"
+          >
+            <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span>New Project</span>
+          </button>
+        </div>
 
-              {/* Project Items */}
-              {loadingProjects ? (
-                <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">Loading projects...</div>
-              ) : projects.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">
-                  No projects yet. Create one to organize your chats!
-                </div>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto scroll-smooth px-3 space-y-6">
+
+          {/* Recent Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground mb-2 px-2 uppercase tracking-wider">Recent</h3>
+            <div className="space-y-1">
+              {loadingConversations ? (
+                <div className="px-2 text-xs text-muted-foreground">Loading...</div>
+              ) : conversations.length === 0 ? (
+                <div className="px-2 text-xs text-muted-foreground">No recent chats</div>
               ) : (
-                projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className={`group relative ${selectedProject?.id === project.id ? "bg-muted border-l-2 border-primary" : ""
-                      }`}
-                  >
+                conversations.slice(0, 5).map((conv) => (
+                  <div key={conv.conversation_id} className="group relative">
                     <button
-                      onClick={() => setSelectedProject(project)}
-                      className="w-full text-left px-4 py-3 hover:bg-muted transition-colors flex items-center gap-3"
+                      onClick={() => setSelectedConversation(conv.conversation_id)}
+                      className={`w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm flex items-center gap-2 truncate ${selectedConversation === conv.conversation_id ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
+                        }`}
                     >
-                      <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                        />
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground truncate">{project.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {project.conversation_count || 0} chats
-                        </div>
-                      </div>
+                      <span className="truncate">{conv.first_message || "New Chat"}</span>
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDeleteProjectDialog(project.id, project.name);
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-red-500/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete project"
+                      onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
+                      <svg className="w-3 h-3 text-muted-foreground hover:text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
                 ))
               )}
             </div>
-
-            {/* Wallet Info */}
-            <div className="p-3 border-t border-border">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-bold">
-                  {account.address.slice(2, 4).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-mono text-foreground truncate">
-                    {formatAddress(account.address)}
-                  </div>
-                </div>
-                <button
-                  onClick={handleCopyAddress}
-                  className="p-1.5 hover:bg-muted rounded transition-colors"
-                  title="Copy address"
-                >
-                  {copied ? (
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between bg-card flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold font-heading text-foreground truncate">
-              {selectedProject ? selectedProject.name : "All Chats"}
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground truncate">
-              {selectedProject?.description || "Your AI agent remembers your conversation history"}
-            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Mobile conversation list toggle */}
-            <button
-              onClick={() => setShowConversationList(!showConversationList)}
-              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
-              title="Toggle conversations"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </button>
-            <button
-              onClick={handleNewConversation}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors flex-shrink-0"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden sm:inline">New Chat</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 flex overflow-hidden min-h-0 relative">
-          {/* Mobile Conversation List Overlay */}
-          {showConversationList && (
-            <>
-              <div
-                className="md:hidden fixed inset-0 bg-black/50 z-40"
-                onClick={() => setShowConversationList(false)}
-              />
-              <div className="md:hidden fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border z-50 flex flex-col">
-                <div className="p-3 border-b border-border flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-muted-foreground">Recent Conversations</h3>
+          {/* Projects Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground mb-2 px-2 uppercase tracking-wider">Projects</h3>
+            <div className="space-y-1">
+              <button
+                onClick={() => setSelectedProject(null)}
+                className={`w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm flex items-center gap-2 ${!selectedProject ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
+                  }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                All Chats
+              </button>
+              {projects.map((project) => (
+                <div key={project.id} className="group relative">
                   <button
-                    onClick={() => setShowConversationList(false)}
-                    className="p-1 hover:bg-muted rounded transition-colors"
+                    onClick={() => setSelectedProject(project)}
+                    className={`w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm flex items-center gap-2 truncate ${selectedProject?.id === project.id ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
+                      }`}
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    <span className="truncate">{project.name}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteProjectDialog(project.id, project.name);
+                    }}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg className="w-3 h-3 text-muted-foreground hover:text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto scroll-smooth">
-                  {loadingConversations ? (
-                    <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
-                  ) : conversations.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground text-sm">
-                      No conversations yet. Start a new chat!
-                    </div>
-                  ) : (
-                    conversations.map((conv) => (
-                      <div
-                        key={conv.conversation_id}
-                        className={`group relative w-full border-b border-border/50 ${selectedConversation === conv.conversation_id ? "bg-muted" : ""
-                          }`}
-                      >
-                        <button
-                          onClick={() => {
-                            console.log("[Dashboard] Selecting conversation:", conv.conversation_id);
-                            setSelectedConversation(conv.conversation_id);
-                            setShowConversationList(false);
-                          }}
-                          className="w-full text-left p-3 hover:bg-muted transition-colors"
-                        >
-                          <div className="text-sm text-foreground line-clamp-2">
-                            {conv.first_message || "New conversation"}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <span>{formatRelativeTime(conv.last_message_at)}</span>
-                            <span>•</span>
-                            <span>{conv.message_count} messages</span>
-                          </div>
-                        </button>
-                        <button
-                          onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Delete conversation"
-                        >
-                          <svg className="w-4 h-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer / Wallet */}
+        <div className="p-3 border-t border-border mt-auto">
+          <div className="flex items-center gap-2 p-2 hover:bg-background rounded-lg transition-colors cursor-pointer" onClick={handleCopyAddress}>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+              {account.address.slice(2, 4).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-foreground truncate">
+                {/* TODO: Integrate ENS resolution */}
+                {formatAddress(account.address)}
               </div>
-            </>
-          )}
-
-          {/* Desktop Conversation List */}
-          <div className="hidden md:flex w-56 lg:w-64 border-r border-border bg-muted/30 flex flex-col flex-shrink-0">
-            <div className="p-3 border-b border-border">
-              <h3 className="text-sm font-medium text-muted-foreground">Recent Conversations</h3>
-            </div>
-            <div className="flex-1 overflow-y-auto scroll-smooth">
-              {loadingConversations ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
-              ) : conversations.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">
-                  No conversations yet. Start a new chat!
-                </div>
-              ) : (
-                conversations.map((conv) => (
-                  <div
-                    key={conv.conversation_id}
-                    className={`group relative w-full border-b border-border/50 ${selectedConversation === conv.conversation_id ? "bg-muted" : ""
-                      }`}
-                  >
-                    <button
-                      onClick={() => {
-                        console.log("[Dashboard] Selecting conversation:", conv.conversation_id);
-                        setSelectedConversation(conv.conversation_id);
-                      }}
-                      className="w-full text-left p-3 hover:bg-muted transition-colors"
-                    >
-                      <div className="text-sm text-foreground line-clamp-2">
-                        {conv.first_message || "New conversation"}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <span>{formatRelativeTime(conv.last_message_at)}</span>
-                        <span>•</span>
-                        <span>{conv.message_count} messages</span>
-                      </div>
-                    </button>
-                    <button
-                      onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete conversation"
-                    >
-                      <svg className="w-4 h-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))
-              )}
+              <div className="text-[10px] text-muted-foreground">{copied ? "Copied!" : "Click to copy"}</div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Chat Interface */}
-          <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden">
-            <ChatInterface
-              conversationId={selectedConversation || undefined}
-              projectId={selectedProject?.id}
-              onConversationChange={handleConversationChange}
-            />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center justify-between pointer-events-none">
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="md:hidden p-2 bg-background/80 backdrop-blur rounded-lg border border-border hover:bg-muted transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
+          <div className="flex items-center gap-2 pointer-events-auto">
+            {/* Header Actions if needed */}
+          </div>
+        </div>
+
+        {/* Chat Interface */}
+        <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden pt-0">
+          <ChatInterface
+            conversationId={selectedConversation || undefined}
+            projectId={selectedProject?.id}
+            onConversationChange={handleConversationChange}
+          />
         </div>
       </div>
 

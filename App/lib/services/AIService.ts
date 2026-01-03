@@ -72,9 +72,14 @@ export class AIService {
 
   // [EXISTING METHODS: analyzeImage, generateImage, transcribeAudio, synthesizeSpeech remain unchanged]
 
-  async analyzeImage(imageBase64: string, question: string = "What is in this image?"): Promise<string> {
+  async analyzeImage(imageInput: string, question: string = "What is in this image?"): Promise<string> {
     try {
-      const url = imageBase64.startsWith("data:image") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+      let url = imageInput;
+      // If it's not a URL and not a data URI, assume it's base64
+      if (!imageInput.startsWith("http") && !imageInput.startsWith("data:")) {
+        url = `data:image/jpeg;base64,${imageInput}`;
+      }
+
       const response = await this.getChatClient().chat.completions.create({
         model: this.getChatModel(),
         messages: [{ role: "user", content: [{ type: "text", text: question }, { type: "image_url", image_url: { url } }] }],
@@ -151,25 +156,42 @@ export class AIService {
     }
   }
 
-  async transcribeAudio(audioFile: File | Blob): Promise<string> {
+  async transcribeAudio(audioInput: File | Blob | string): Promise<string> {
     // Use Replicate only (OpenAI Whisper not available with project-scoped key)
     if (!this.replicate) {
       throw new Error("Replicate API token required for audio transcription");
     }
-    return this.transcribeWithReplicate(audioFile);
+    return this.transcribeWithReplicate(audioInput);
   }
 
-  private async transcribeWithReplicate(audioFile: File | Blob): Promise<string> {
+  private async transcribeWithReplicate(audioInput: File | Blob | string): Promise<string> {
     if (!this.replicate) {
       throw new Error("Replicate client not initialized");
     }
 
     try {
-      // Convert File/Blob to base64 data URI
-      const arrayBuffer = await audioFile.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      const mimeType = audioFile.type || "audio/mpeg";
-      const dataUri = `data:${mimeType};base64,${base64}`;
+      let dataUri: string;
+
+      if (typeof audioInput === "string") {
+        // If it's a URL, fetch it and convert to base64
+        if (audioInput.startsWith("http")) {
+          const response = await fetch(audioInput);
+          const arrayBuffer = await response.arrayBuffer();
+          const base64 = Buffer.from(arrayBuffer).toString("base64");
+          const mimeType = response.headers.get("content-type") || "audio/mpeg";
+          dataUri = `data:${mimeType};base64,${base64}`;
+        } else if (audioInput.startsWith("data:")) {
+          dataUri = audioInput;
+        } else {
+          throw new Error("Invalid string input for transcription (must be URL or data URI)");
+        }
+      } else {
+        // Convert File/Blob to base64 data URI
+        const arrayBuffer = await audioInput.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        const mimeType = audioInput.type || "audio/mpeg";
+        dataUri = `data:${mimeType};base64,${base64}`;
+      }
 
       // Use Whisper model on Replicate
       const output = await this.replicate.run(
