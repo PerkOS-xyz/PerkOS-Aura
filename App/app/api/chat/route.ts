@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const response = await elizaServiceV2.processMessage({
       message: validatedData.message,
       conversationId: validatedData.conversationId || undefined,
+      projectId: validatedData.projectId || undefined,
     });
 
     return NextResponse.json({

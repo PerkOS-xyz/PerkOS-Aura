@@ -9,6 +9,7 @@ export const chatRequestSchema = z.object({
     conversationId: z.string().nullable().optional(),
     walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
     paymentId: z.string().optional(),
+    projectId: z.string().uuid().nullable().optional(),
 });
 
 export type ChatRequestInput = z.infer<typeof chatRequestSchema>;
