@@ -3,7 +3,7 @@
 ## ✅ Completed
 
 1. **Installed @elizaos/core** (v1.7.0)
-2. **Created SupabaseAdapter** - Implements IDatabaseAdapter for user-isolated memory storage
+2. **Created FirebaseAdapter** - Implements IDatabaseAdapter for user-isolated memory storage using Firestore
 3. **Created Character Configuration** - Defines agent personality and behavior
 4. **Created AI Service Actions** - elizaOS Actions for AI service operations:
    - `analyze_image` - Analyze images with GPT-4o vision
@@ -17,7 +17,10 @@
 ## 🔄 In Progress
 
 1. **Model Management** - Migrating from direct OpenAI calls to elizaOS `generateText`/`useModel`
-2. **Testing** - Need to test the full integration
+2. **Testing** - Need to verify Firebase integration in production environment
+
+> [!WARNING]
+> **Vector Search Limitation**: The `FirebaseAdapter` does not currently support semantic search (embeddings) as Firestore lacks native vector support. RAG capabilities are limited to keyword search.
 
 ## 📋 Architecture
 
@@ -31,7 +34,7 @@ ElizaServiceV2 (uses elizaOS)
 AgentRuntimeManager.getAgentRuntime()
   ↓
 AgentRuntime
-  ├── SupabaseAdapter (user-isolated)
+  ├── FirebaseAdapter (user-isolated, Firestore)
   ├── Character (personality)
   ├── Actions (token operations)
   └── Model Provider (OpenAI)
@@ -41,7 +44,7 @@ AgentRuntime
 
 ### User Isolation
 - Each user gets their own `AgentRuntime` instance
-- `SupabaseAdapter` filters all queries by `user_wallet_address`
+- `FirebaseAdapter` filters all queries by `user_wallet_address`
 - No data mixing between users
 
 ### AI Service Operations
@@ -51,7 +54,7 @@ AgentRuntime
 
 ### Memory System
 - Uses elizaOS Memory system
-- Stored in Supabase with user isolation
+- Stored in Firebase Firestore with user isolation
 - Supports conversation history, entities, facts, relationships
 
 ## 🚀 Usage

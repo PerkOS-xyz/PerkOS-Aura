@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/db/supabase";
+import { getFirestoreInstance, getUserCollectionPath, COLLECTIONS, getConversationMessagesPath } from "@/lib/db/firebase";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -25,35 +25,69 @@ export async function GET(request: NextRequest) {
       projectId: projectId || undefined,
     });
 
-    const { data, error } = await supabaseAdmin.rpc("aura_get_user_conversations", {
-      p_user_wallet: validated.walletAddress,
-      p_limit: 50,
-      p_project_id: validated.projectId || null,
-    });
+    const db = getFirestoreInstance();
+    const userWallet = validated.walletAddress.toLowerCase();
+    const conversationsRef = db.collection(getUserCollectionPath(COLLECTIONS.CONVERSATIONS, userWallet));
 
-    if (error) {
-      console.error("Failed to get conversations:", error);
-      return NextResponse.json(
-        { error: "Failed to get conversations", message: error.message },
-        { status: 500 }
-      );
+    // Get all conversations for the user
+    let query = conversationsRef.orderBy("last_message_at", "desc").limit(50);
+    
+    if (validated.projectId) {
+      query = query.where("project_id", "==", validated.projectId) as any;
+    }
+
+    const snapshot = await query.get();
+    const conversations = [];
+
+    // For each conversation, get the first message and count messages
+    for (const doc of snapshot.docs) {
+      const convData = doc.data();
+      const conversationId = convData.conversation_id || doc.id;
+
+      // Get messages for this conversation
+      const messagesRef = db
+        .collection(getConversationMessagesPath(userWallet, conversationId))
+        .orderBy("created_at", "asc")
+        .limit(1);
+
+      const messagesSnapshot = await messagesRef.get();
+      
+      // Get message count
+      const allMessagesSnapshot = await db
+        .collection(getConversationMessagesPath(userWallet, conversationId))
+        .get();
+
+      const firstMessage = messagesSnapshot.docs[0]?.data()?.message_content || null;
+      const messageCount = allMessagesSnapshot.size;
+
+      // Only include conversations that have messages
+      if (messageCount > 0) {
+        conversations.push({
+          conversation_id: conversationId,
+          project_id: convData.project_id || null,
+          project_name: null, // Would need to fetch from projects collection
+          first_message: firstMessage,
+          last_message_at: convData.last_message_at?.toDate?.()?.toISOString() || convData.last_message_at || new Date().toISOString(),
+          message_count: messageCount,
+        });
+      }
     }
 
     console.log("[Get Conversations] Returning conversations:", {
       walletAddress: validated.walletAddress,
-      walletLowercase: validated.walletAddress.toLowerCase(),
-      count: data?.length || 0,
-      conversationIds: data?.map((c: any) => c.conversation_id) || [],
-      conversations: data?.map((c: any) => ({
+      walletLowercase: userWallet,
+      count: conversations.length,
+      conversationIds: conversations.map((c: any) => c.conversation_id),
+      conversations: conversations.map((c: any) => ({
         id: c.conversation_id,
         firstMessage: c.first_message?.substring(0, 50),
         messageCount: c.message_count,
-      })) || [],
+      })),
     });
 
     return NextResponse.json({
       success: true,
-      conversations: data || [],
+      conversations,
     });
   } catch (error) {
     console.error("Get conversations error:", error);
