@@ -105,10 +105,29 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
       });
 
-      // Store the analysis as assistant response
+      // Extract transaction info from payment result for persistence
+      let transactionHash: string | undefined;
+      let paymentNetwork: string | undefined;
+      if (paymentResult.paymentResponseHeader) {
+        try {
+          const paymentResponse = JSON.parse(
+            Buffer.from(paymentResult.paymentResponseHeader, "base64").toString()
+          );
+          transactionHash = paymentResponse.transactionHash;
+          paymentNetwork = paymentResponse.network;
+        } catch (e) {
+          console.warn("[Chat Image API] Failed to parse payment response header:", e);
+        }
+      }
+
+      // Store the analysis as assistant response (with transaction info for paid badge)
       await adapter.createMemory({
         type: MemoryType.MESSAGE,
-        content: { text: assistantResponse },
+        content: {
+          text: assistantResponse,
+          transactionHash,
+          paymentNetwork,
+        },
         roomId: conversationId,
         agentId: runtime.agentId,
         createdAt: new Date(),
@@ -118,11 +137,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Return the analysis directly as the response
+    // Include PAYMENT-RESPONSE header so client can extract transaction hash
+    const responseHeaders: Record<string, string> = {};
+    if (paymentResult.paymentResponseHeader) {
+      responseHeaders["PAYMENT-RESPONSE"] = paymentResult.paymentResponseHeader;
+    }
+
     return NextResponse.json({
       success: true,
       analysis,
       response: assistantResponse,
       conversationId,
+    }, {
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error("Chat image error:", error);
