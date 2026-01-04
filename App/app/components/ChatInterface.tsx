@@ -307,9 +307,12 @@ export function ChatInterface({
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Save the generated result to the database so it persists
-      // Use currentConversationId which should be set from the initial request
+      // IMPORTANT: Skip saving if the endpoint already saves to database (like /api/chat/image)
+      // to avoid duplicate messages
+      const endpointAlreadySavesToDatabase = action.url === "/api/chat/image";
       const conversationIdForSave = currentConversationId || data.conversationId;
-      if (conversationIdForSave && account?.address) {
+
+      if (!endpointAlreadySavesToDatabase && conversationIdForSave && account?.address) {
         try {
           console.log("[ChatInterface] Saving generated content to database", {
             conversationId: conversationIdForSave,
@@ -346,21 +349,16 @@ export function ChatInterface({
           console.error("[ChatInterface] Failed to save generated content:", saveError);
           // Don't throw - the image is displayed, just not persisted
         }
+      } else if (endpointAlreadySavesToDatabase) {
+        console.log("[ChatInterface] Skipping client-side save - endpoint already persists to database");
       }
 
       // Handle conversation updates if needed
       if (data.conversationId) {
-        // We can't easily access currentConversationId here nicely if it's a closure, 
-        // but since this function is defined in the component scope, it should catch the latest state 
-        // IF we wrap it in a ref or use the setter callback properly.
-        // Actually, currentConversationId is state, so it's constant in this closure?? 
-        // No, this function is redefined on every render? No, I defined it as a const inside the component.
-        // So it closes over the scope. But if I don't use useCallback, it's recreated every render so it sees fresh state.
+        // Mark as locally created FIRST to prevent server reload on any state changes
+        locallyCreatedConversationsRef.current.add(data.conversationId);
 
-        // However, updating state based on current state is safe.
-        // We need to check and update outside the setter to avoid calling onConversationChange during state update
         if (!currentConversationId) {
-          locallyCreatedConversationsRef.current.add(data.conversationId);
           setCurrentConversationId(data.conversationId);
           // Use setTimeout to defer the callback to avoid "setState during render" warning
           const conversationIdToNotify = data.conversationId;

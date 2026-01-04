@@ -37,9 +37,13 @@
 - 📝 Quiz Generator ($0.05)
 
 ### Core Features
-- ✅ **x402 v2 Payment Integration** - Gasless crypto micropayments
+- ✅ **x402 v2 Payment Integration** - Gasless crypto micropayments with transaction tracking
+- ✅ **AI Chat Interface** - Conversational AI with ElizaOS runtime and persistent memory
+- ✅ **Image Analysis with Payment** - Upload images, pay via x402, get AI analysis with "Paid" badge
 - ✅ **Admin Dashboard** - Service management and registration
 - ✅ **API Documentation** - Interactive endpoint explorer
+- ✅ **Project System** - Organize conversations into projects with wallet isolation
+- ✅ **Firebase Persistence** - Firestore-backed conversation history with transaction data
 - ✅ **Marketplace Integration** - PerkOS-Stack facilitator registration
 - ✅ **Multi-Chain Support** - Avalanche, Base, Celo
 - ✅ **Type-Safe** - Full TypeScript implementation
@@ -47,7 +51,9 @@
 ## 📋 Prerequisites
 
 - **Node.js** 18+ and npm
-- **OpenAI API Key** - For AI services
+- **OpenRouter API Key** - For AI text services (GPT-4o-mini)
+- **Replicate API Token** - For media generation (FLUX images, Whisper, TTS)
+- **Firebase Project** - For Firestore database (conversation persistence)
 - **Thirdweb Account** - For wallet integration
 - **PerkOS-Stack Facilitator** - Running on port 3005 (optional for local dev)
 
@@ -77,8 +83,14 @@ Visit `http://localhost:3000`
 Create `.env.local` in the `App` directory:
 
 ```bash
-# OpenAI (Required)
-OPENAI_API_KEY=sk-proj-...
+# AI Providers (Required)
+OPENROUTER_API_KEY=sk-or-v1-...          # OpenRouter for text AI (GPT-4o-mini)
+REPLICATE_API_TOKEN=r8_...                # Replicate for media (FLUX, Whisper, TTS)
+
+# Firebase (Required for chat persistence)
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@...
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
 
 # Thirdweb (Required)
 NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id
@@ -224,18 +236,51 @@ PerkOS-Vendor-Service-AI/
 │   │   ├── api/
 │   │   │   ├── ai/             # 20 AI service endpoints
 │   │   │   ├── admin/          # Admin API routes
+│   │   │   ├── chat/           # Chat API (messages, image analysis)
+│   │   │   ├── conversations/  # Conversation list API
+│   │   │   ├── projects/       # Project CRUD API
 │   │   │   └── payment/        # x402 payment routes
 │   │   ├── docs/               # API documentation
-│   │   ├── dashboard/          # Service dashboard
-│   │   └── components/         # Shared components
+│   │   ├── dashboard/          # Chat interface and projects
+│   │   └── components/         # Shared components (ChatInterface, Header)
 │   ├── lib/
 │   │   ├── config/             # Configuration
+│   │   ├── db/                 # Firebase client configuration
 │   │   ├── services/           # AI service implementations
+│   │   │   └── elizaos/        # ElizaOS integration (AgentRuntime, FirebaseAdapter)
 │   │   ├── middleware/         # x402 middleware
 │   │   └── utils/              # Utilities
 │   └── package.json
+├── CLAUDE.md                   # AI assistant integration guide
 └── README.md
 ```
+
+## 💬 Chat Interface
+
+The dashboard includes an AI chat interface with:
+
+### Features
+- **Conversational AI**: ElizaOS-powered chat with GPT-4o-mini
+- **Image Analysis**: Upload images and get AI analysis (x402 paid)
+- **Image Generation**: Generate images from text prompts (x402 paid)
+- **Project Organization**: Group conversations by project
+- **Persistent History**: All messages stored in Firebase with wallet isolation
+- **Payment Tracking**: "Paid" badge on paid service responses with transaction links
+
+### Payment Flow for Image Analysis
+1. User uploads image in chat
+2. PaymentButton appears with price ($0.02)
+3. User signs x402 payment via wallet
+4. Payment verified, image analyzed
+5. Response saved with transaction hash
+6. "Paid" badge and "View on Explorer" link displayed
+
+### API Endpoints
+- `POST /api/chat` - Send message, get AI response
+- `GET /api/chat` - Get conversation history
+- `POST /api/chat/image` - Analyze image with x402 payment
+- `GET /api/conversations` - List user's conversations
+- `POST /api/projects` - Create/manage projects
 
 ## 🔧 Development
 
@@ -294,9 +339,12 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **OpenAI** - GPT-4o, DALL-E 3, Whisper
+- **OpenRouter** - GPT-4o-mini AI services
+- **Replicate** - FLUX image generation, Whisper, TTS
 - **Coinbase** - x402 payment protocol
 - **Thirdweb** - Wallet infrastructure
+- **Firebase** - Firestore database
+- **ElizaOS** - Agent runtime framework
 - **PerkOS** - Facilitator infrastructure
 
 ---
