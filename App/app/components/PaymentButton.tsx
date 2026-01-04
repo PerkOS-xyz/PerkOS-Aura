@@ -21,13 +21,24 @@ interface PaymentButtonProps {
 /**
  * Format price string to remove trailing zeros
  * "$0.001000" -> "$0.001"
+ * Also handles atomic USDC amounts (6 decimals) from maxAmountRequired
  */
-function formatPrice(price: string): string {
-  // Remove $ sign, parse as number, then format back
-  const numericPrice = price.replace("$", "").trim();
-  const num = parseFloat(numericPrice);
-  // Format without trailing zeros
-  return `$${num}`;
+function formatPrice(price: string | undefined, maxAmountRequired?: string): string {
+  // If price is provided, use it
+  if (price) {
+    const numericPrice = price.replace("$", "").trim();
+    const num = parseFloat(numericPrice);
+    return `$${num}`;
+  }
+
+  // Fall back to maxAmountRequired (atomic USDC units with 6 decimals)
+  if (maxAmountRequired) {
+    const atomicAmount = BigInt(maxAmountRequired);
+    const usdcAmount = Number(atomicAmount) / 1_000_000; // USDC has 6 decimals
+    return `$${usdcAmount}`;
+  }
+
+  return "$0.00";
 }
 
 export function PaymentButton({
@@ -72,7 +83,11 @@ export function PaymentButton({
       console.log("[PaymentButton] Starting payment signing process");
 
       // Parse price to USDC amount
-      const amountInUSDC = parsePriceToUSDC(requirements.price);
+      // If maxAmountRequired is provided (from x402 v2 header), use it directly
+      // Otherwise parse the price string
+      const amountInUSDC = requirements.maxAmountRequired
+        ? BigInt(requirements.maxAmountRequired)
+        : parsePriceToUSDC(requirements.price || "$0.01");
 
       // Generate nonce
       const nonce = generateNonce();
@@ -144,7 +159,7 @@ export function PaymentButton({
       <div className="mb-3">
         <p className="text-sm font-medium text-cyan-400 mb-1">Payment Required</p>
         <p className="text-xs text-gray-400">
-          {requirements.endpoint} requires {formatPrice(requirements.price)} payment
+          {requirements.endpoint || requirements.resource} requires {formatPrice(requirements.price, requirements.maxAmountRequired)} payment
         </p>
       </div>
 
@@ -195,7 +210,7 @@ export function PaymentButton({
             />
           </svg>
         )}
-        {isSigning ? "Processing..." : `Sign Payment (${formatPrice(requirements.price)})`}
+        {isSigning ? "Processing..." : `Sign Payment (${formatPrice(requirements.price, requirements.maxAmountRequired)})`}
       </button>
 
       {isSigning && (

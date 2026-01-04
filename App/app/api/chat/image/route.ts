@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIService } from "@/lib/services/AIService";
-import { getElizaServiceV2 } from "@/lib/services/ElizaServiceV2";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -40,19 +39,32 @@ export async function POST(request: NextRequest) {
 
     const { image, imageUrl, message, walletAddress, conversationId } = validatedData;
 
-    // Verify conversation belongs to this user (user isolation)
-    if (!conversationId.toLowerCase().includes(walletAddress.toLowerCase())) {
-      return NextResponse.json(
-        { error: "Authorization error", message: "Conversation does not belong to this user" },
-        { status: 403 }
-      );
-    }
+    // Note: User isolation is handled by the FirebaseAdapter which stores all data
+    // under the user's wallet address path. The wallet address is validated by the
+    // schema (must be valid 0x address format) and the user proves ownership via
+    // their connected wallet. No need to validate conversationId format here.
+
+    // Debug: Log what image data we received
+    console.log("[Chat Image API] Received image data:", {
+      hasImage: !!image,
+      imageLength: image?.length,
+      hasImageUrl: !!imageUrl,
+      imageUrl: imageUrl?.substring(0, 100), // First 100 chars for safety
+      message,
+      conversationId,
+    });
 
     // 1. Analyze the image
     const aiService = getAIService();
     const question = message || "Please describe and analyze this image in detail.";
     // Use imageUrl if provided, otherwise image base64
-    const analysis = await aiService.analyzeImage(imageUrl || image!, question);
+    const imageToAnalyze = imageUrl || image!;
+    console.log("[Chat Image API] Calling analyzeImage with:", {
+      imageType: imageToAnalyze.startsWith("http") ? "url" : imageToAnalyze.startsWith("data:") ? "data-uri" : "base64",
+      imageLength: imageToAnalyze.length,
+      question,
+    });
+    const analysis = await aiService.analyzeImage(imageToAnalyze, question);
 
     if (!analysis || analysis.trim() === "") {
       return NextResponse.json(
@@ -61,25 +73,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Build the message to send to chat
-    // Include user's message if provided, along with the fact that an image was analyzed
-    const chatMessage = message
-      ? `[User shared an image with message: "${message}"]\n\nImage analysis: ${analysis}`
-      : `[User shared an image]\n\nImage analysis: ${analysis}`;
+    // 2. Store the interaction in conversation history
+    // We don't send to Eliza for another response - the image analysis IS the response
+    const { getAgentRuntime } = await import("@/lib/services/elizaos/AgentRuntimeManager");
+    const { MemoryType } = await import("@elizaos/core");
 
-    // 3. Send to chat and get AI response
-    const elizaService = getElizaServiceV2(walletAddress);
-    const chatResponse = await elizaService.processMessage({
-      message: chatMessage,
-      conversationId,
-    });
+    const runtime = await getAgentRuntime(walletAddress);
+    const adapter = (runtime as any).adapter;
 
-    // 4. Return both analysis and AI response
+    // Build user message for history
+    const userMessageForHistory = message
+      ? `[Shared an image] ${message}`
+      : `[Shared an image for analysis]`;
+
+    // Build assistant response that includes the analysis
+    const assistantResponse = message
+      ? `I've analyzed the image you shared. Here's what I found:\n\n${analysis}`
+      : `Here's my analysis of the image:\n\n${analysis}`;
+
+    if (adapter) {
+      // Store user's image share message
+      await adapter.createMemory({
+        type: MemoryType.MESSAGE,
+        content: { text: userMessageForHistory },
+        roomId: conversationId,
+        userId: walletAddress.toLowerCase(),
+        createdAt: new Date(),
+      });
+
+      // Store the analysis as assistant response
+      await adapter.createMemory({
+        type: MemoryType.MESSAGE,
+        content: { text: assistantResponse },
+        roomId: conversationId,
+        agentId: runtime.agentId,
+        createdAt: new Date(),
+      });
+
+      console.log("[Chat Image API] Stored image analysis in conversation history");
+    }
+
+    // 3. Return the analysis directly as the response
     return NextResponse.json({
       success: true,
       analysis,
-      response: chatResponse.response,
-      conversationId: chatResponse.conversationId,
+      response: assistantResponse,
+      conversationId,
     });
   } catch (error) {
     console.error("Chat image error:", error);

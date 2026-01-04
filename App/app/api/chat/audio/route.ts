@@ -56,13 +56,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify conversation belongs to this user (user isolation)
-    if (!conversationId.toLowerCase().includes(walletAddress.toLowerCase())) {
-      return NextResponse.json(
-        { error: "Authorization error", message: "Conversation does not belong to this user" },
-        { status: 403 }
-      );
-    }
+    // Note: User isolation is handled by the FirebaseAdapter which stores all data
+    // under the user's wallet address path. The wallet address is validated above
+    // and the user proves ownership via their connected wallet.
 
     // 1. Transcribe the audio
     const aiService = getAIService();

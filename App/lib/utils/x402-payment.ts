@@ -20,12 +20,17 @@ export interface PaymentEnvelope {
 }
 
 export interface PaymentRequirements {
-  endpoint: string;
-  method: string;
-  price: string; // USD price like "$0.10"
+  endpoint?: string;
+  method?: string;
+  price?: string; // USD price like "$0.10"
   network: string;
   payTo: string;
-  facilitator: string;
+  facilitator?: string;
+  // x402 v2 fields from PAYMENT-REQUIRED header
+  maxAmountRequired?: string; // Atomic USDC amount (6 decimals)
+  resource?: string; // e.g., "/api/chat/image"
+  scheme?: string; // e.g., "exact"
+  asset?: string; // USDC contract address
 }
 
 /**

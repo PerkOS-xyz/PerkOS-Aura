@@ -80,10 +80,23 @@ export class AIService {
         url = `data:image/jpeg;base64,${imageInput}`;
       }
 
+      console.log("[AIService.analyzeImage] Sending to API:", {
+        model: this.getChatModel(),
+        urlType: url.startsWith("http") ? "url" : url.startsWith("data:") ? "data-uri" : "unknown",
+        urlPreview: url.substring(0, 80),
+        question,
+      });
+
       const response = await this.getChatClient().chat.completions.create({
         model: this.getChatModel(),
         messages: [{ role: "user", content: [{ type: "text", text: question }, { type: "image_url", image_url: { url } }] }],
       });
+
+      console.log("[AIService.analyzeImage] Response received:", {
+        contentLength: response.choices[0]?.message?.content?.length,
+        contentPreview: response.choices[0]?.message?.content?.substring(0, 100),
+      });
+
       return response.choices[0].message.content || "Unable to analyze the image";
     } catch (error) {
       console.error("Image analysis error:", error);

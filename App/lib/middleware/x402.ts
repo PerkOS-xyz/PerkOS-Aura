@@ -177,38 +177,53 @@ export async function verifyPayment(
     const tokenName = "USD Coin";
     const tokenVersion = "2";
 
-    const verifyResponse = await fetch(verifyUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        x402Version: 2, // Use x402 V2 protocol
-        paymentRequirements: {
-          scheme: "exact", // Required: exact or deferred
-          network: toCAIP2Network(routeConfig.network), // V2 uses CAIP-2 format
-          maxAmountRequired: priceAmount.toString(), // Atomic units as string (e.g., "1000" for $0.001)
-          resource: route, // URL of resource (per x402 v2 spec)
-          description: routeConfig.description || "Payment required",
-          mimeType: "application/json", // Response MIME type (per x402 v2 spec)
-          payTo: x402Config.payTo,
-          maxTimeoutSeconds: 30, // Maximum time for server to respond (per x402 v2 spec)
-          asset: usdcAddress, // Token contract address (required for signature verification)
-          extra: {
-            // For exact scheme on EVM: token name and version for EIP-712 domain (per x402 v2 spec)
-            // Facilitator uses this to construct the correct EIP-712 domain
-            name: tokenName,
-            version: tokenVersion
-          }
+    let verifyResponse: Response;
+    try {
+      verifyResponse = await fetch(verifyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        paymentPayload: {
-          x402Version: 2, // V2 protocol
-          network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
-          scheme: "exact", // Required: exact or deferred
-          payload: envelope,
-        },
-      }),
-    });
+        body: JSON.stringify({
+          x402Version: 2, // Use x402 V2 protocol
+          paymentRequirements: {
+            scheme: "exact", // Required: exact or deferred
+            network: toCAIP2Network(routeConfig.network), // V2 uses CAIP-2 format
+            maxAmountRequired: priceAmount.toString(), // Atomic units as string (e.g., "1000" for $0.001)
+            resource: route, // URL of resource (per x402 v2 spec)
+            description: routeConfig.description || "Payment required",
+            mimeType: "application/json", // Response MIME type (per x402 v2 spec)
+            payTo: x402Config.payTo,
+            maxTimeoutSeconds: 30, // Maximum time for server to respond (per x402 v2 spec)
+            asset: usdcAddress, // Token contract address (required for signature verification)
+            extra: {
+              // For exact scheme on EVM: token name and version for EIP-712 domain (per x402 v2 spec)
+              // Facilitator uses this to construct the correct EIP-712 domain
+              name: tokenName,
+              version: tokenVersion
+            }
+          },
+          paymentPayload: {
+            x402Version: 2, // V2 protocol
+            network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
+            scheme: "exact", // Required: exact or deferred
+            payload: envelope,
+          },
+        }),
+      });
+    } catch (fetchError) {
+      // Connection error - facilitator not running or unreachable
+      const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
+      console.error(`❌ Facilitator connection failed: ${verifyUrl}`, {
+        error: errorMessage,
+        facilitatorUrl: x402Config.facilitatorUrl,
+        hint: "Make sure the x402 facilitator is running on the configured port",
+      });
+      return {
+        isValid: false,
+        invalidReason: `Facilitator unavailable at ${x402Config.facilitatorUrl}. Please ensure the facilitator service is running.`,
+      };
+    }
 
     if (!verifyResponse.ok) {
       const errorData = await verifyResponse.json().catch(() => ({}));
@@ -261,37 +276,52 @@ export async function settlePayment(
     const tokenName = "USD Coin";
     const tokenVersion = "2";
 
-    const settleResponse = await fetch(settleUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        x402Version: 2, // Use x402 V2 protocol
-        paymentPayload: {
-          x402Version: 2, // V2 protocol
-          network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
-          scheme: "exact", // Required: exact or deferred
-          payload: envelope,
+    let settleResponse: Response;
+    try {
+      settleResponse = await fetch(settleUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        paymentRequirements: {
-          scheme: "exact", // Must match paymentPayload scheme
-          network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
-          maxAmountRequired: envelope.authorization.value, // Use value from authorization
-          resource: "", // Not needed for settlement
-          description: "Payment settlement",
-          mimeType: "application/json",
-          payTo: envelope.authorization.to,
-          maxTimeoutSeconds: 30,
-          asset: usdcAddress, // Token contract address (required for signature verification)
-          extra: {
-            // Facilitator uses this to construct the correct EIP-712 domain
-            name: tokenName,
-            version: tokenVersion
-          }
-        },
-      }),
-    });
+        body: JSON.stringify({
+          x402Version: 2, // Use x402 V2 protocol
+          paymentPayload: {
+            x402Version: 2, // V2 protocol
+            network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
+            scheme: "exact", // Required: exact or deferred
+            payload: envelope,
+          },
+          paymentRequirements: {
+            scheme: "exact", // Must match paymentPayload scheme
+            network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
+            maxAmountRequired: envelope.authorization.value, // Use value from authorization
+            resource: "", // Not needed for settlement
+            description: "Payment settlement",
+            mimeType: "application/json",
+            payTo: envelope.authorization.to,
+            maxTimeoutSeconds: 30,
+            asset: usdcAddress, // Token contract address (required for signature verification)
+            extra: {
+              // Facilitator uses this to construct the correct EIP-712 domain
+              name: tokenName,
+              version: tokenVersion
+            }
+          },
+        }),
+      });
+    } catch (fetchError) {
+      // Connection error - facilitator not running or unreachable
+      const errorMessage = fetchError instanceof Error ? fetchError.message : "Unknown error";
+      console.error(`❌ Facilitator connection failed during settlement: ${settleUrl}`, {
+        error: errorMessage,
+        facilitatorUrl: x402Config.facilitatorUrl,
+        hint: "Make sure the x402 facilitator is running on the configured port",
+      });
+      return {
+        success: false,
+        error: `Facilitator unavailable at ${x402Config.facilitatorUrl}. Please ensure the facilitator service is running.`,
+      };
+    }
 
     if (!settleResponse.ok) {
       const errorData = await settleResponse.json().catch(() => ({}));
@@ -371,7 +401,10 @@ export function create402Response(
   price: string,
   network: string
 ): NextResponse {
-  const routePrice = paymentRoutes[route as keyof typeof paymentRoutes];
+  // Extract just the path if route includes method prefix
+  const routePath = route.includes(" ") ? route.split(" ")[1] : route;
+
+  const routePrice = paymentRoutes[routePath as keyof typeof paymentRoutes];
   if (!routePrice) {
     // No payment required for this route
     return NextResponse.json({ error: "Route not configured for payment" }, { status: 500 });
@@ -380,7 +413,7 @@ export function create402Response(
   const routeConfig = {
     price: `$${routePrice}`,
     network: network || x402Config.network,
-    description: `Payment required for ${route}`,
+    description: `Payment required for ${routePath}`,
   };
 
   // Parse price to atomic units (USDC has 6 decimals)
@@ -392,7 +425,7 @@ export function create402Response(
     scheme: "exact",
     network: toCAIP2Network(network),
     maxAmountRequired: priceAmount.toString(),
-    resource: route, // e.g., "/api/balance/check"
+    resource: routePath, // e.g., "/api/balance/check"
     description: routeConfig.description || "Payment required for this resource",
     mimeType: "application/json",
     payTo: x402Config.payTo,
@@ -453,11 +486,17 @@ export async function verifyX402Payment(
   envelope?: PaymentEnvelope;
   paymentResponseHeader?: string; // V2: PAYMENT-RESPONSE header value
 }> {
-  const routePrice = paymentRoutes[route as keyof typeof paymentRoutes];
+  // Extract just the path if route includes method prefix (e.g., "POST /api/chat/image" -> "/api/chat/image")
+  const routePath = route.includes(" ") ? route.split(" ")[1] : route;
+
+  const routePrice = paymentRoutes[routePath as keyof typeof paymentRoutes];
   if (routePrice === undefined) {
     // Route not configured for payment, allow through
+    console.log(`🔍 Route ${routePath} not configured for payment, allowing through`);
     return { isValid: true };
   }
+
+  console.log(`💰 Route ${routePath} requires payment: $${routePrice}`);
 
   // Build route config from price
   const priceString = `$${routePrice}`;
@@ -471,8 +510,8 @@ export async function verifyX402Payment(
     };
   }
 
-  // Verify payment
-  const verification = await verifyPayment(envelope, route, priceString);
+  // Verify payment (use routePath, not route with method prefix)
+  const verification = await verifyPayment(envelope, routePath, priceString);
   if (!verification.isValid) {
     return {
       isValid: false,
