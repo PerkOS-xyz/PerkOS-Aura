@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { paymentRoutes, x402Config } from "@/lib/config/x402";
 import { toCAIP2Network, parsePriceToUSDC, getUSDCAddress } from "@/lib/utils/x402-payment";
+import { detectTokenInfo } from "@/lib/utils/token-detection";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +50,31 @@ export async function GET(request: NextRequest) {
     const priceAmount = parsePriceToUSDC(routeConfig.price);
     const usdcAddress = getUSDCAddress(routeConfig.network);
 
-    // USDC token info (standard across all chains)
-    const tokenName = "USD Coin";
+    // Detect token info to pass to client (so it knows the token name for EIP-712 domain)
+    const tokenInfo = await detectTokenInfo(usdcAddress, routeConfig.network);
+    const tokenName = tokenInfo?.name || "USD Coin";
     const tokenVersion = "2"; // Standard version for EIP-3009 tokens
 
     // Return x402 v2 compliant payment requirements
     return NextResponse.json({
       x402Version: 2,
-      tokenName,
-      tokenVersion,
-      contracts: [
+      accepts: [
         {
-          address: usdcAddress,
-          chainId: routeConfig.network === "avalanche" ? 43114 : routeConfig.network === "base" ? 8453 : 42220,
+          scheme: "exact",
+          network: toCAIP2Network(routeConfig.network),
+          maxAmountRequired: priceAmount.toString(),
+          resource: endpoint,
+          description: routeConfig.description,
+          mimeType: "application/json",
+          payTo: x402Config.payTo,
+          maxTimeoutSeconds: 30,
+          asset: usdcAddress,
+          extra: {
+            // Token name and version for EIP-712 domain construction
+            // Client and facilitator use this to sign/verify correctly
+            name: tokenName,
+            version: tokenVersion,
+          },
         },
       ],
     });

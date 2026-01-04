@@ -365,6 +365,10 @@ export function ChatInterface({
           const parsed = JSON.parse(decoded);
           const requirements = parsed.accepts[0];
 
+          // Extract token info from extra field for EIP-712 domain construction
+          const tokenName = requirements.extra?.name;
+          const tokenVersion = requirements.extra?.version;
+
           const paymentId = `pay_${Date.now()}`;
 
           // Store pending action
@@ -384,6 +388,8 @@ export function ChatInterface({
             timestamp: new Date().toISOString(),
             paymentRequest: {
               ...requirements,
+              tokenName,
+              tokenVersion,
               paymentId,
               endpoint: url
             }
@@ -557,6 +563,10 @@ export function ChatInterface({
           const parsed = JSON.parse(decoded);
           const requirements = parsed.accepts[0]; // Take first acceptance criteria
 
+          // Extract token info from extra field for EIP-712 domain construction
+          const tokenName = requirements.extra?.name;
+          const tokenVersion = requirements.extra?.version;
+
           const paymentId = `pay_${Date.now()}`;
 
           // Store pending action
@@ -575,6 +585,8 @@ export function ChatInterface({
             timestamp: new Date().toISOString(),
             paymentRequest: {
               ...requirements,
+              tokenName,
+              tokenVersion,
               paymentId,
               endpoint: url
             }
