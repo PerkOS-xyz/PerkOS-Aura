@@ -68,7 +68,7 @@ export class ElizaServiceV2 {
    * Process chat message using elizaOS AgentRuntime
    */
   async processMessage(request: ChatRequest): Promise<ChatResponse> {
-    const conversationId = request.conversationId || `conv_${Date.now()}`;
+    const conversationId = request.conversationId || `conv_${this.userWalletAddress}_${Date.now()}`;
     const projectId = request.projectId;
 
     console.log("[ElizaServiceV2] processMessage called", {

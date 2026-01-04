@@ -822,110 +822,111 @@ export function ChatInterface({
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0 scroll-smooth">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${message.role === "user" ? "items-end" : "items-start"}`}>
-              <div
-                className={`rounded-2xl px-5 py-3 shadow-sm ${message.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-none"
-                  : "bg-muted text-foreground rounded-bl-none"
+      <div className="flex-1 overflow-y-auto p-4 min-h-0 scroll-smooth">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+                <div className={`flex flex-col max-w-[85%] ${message.role === "user" ? "items-end" : "items-start"}`}>
+                <div
+                  className={`rounded-2xl px-5 py-3 shadow-sm ${message.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-br-none"
+                    : "bg-muted text-foreground rounded-bl-none"
                   }`}
-              >
-                {/* Show image preview if attached */}
-                {message.attachmentPreview && (
-                  <div className="mb-2">
-                    <img
-                      src={message.attachmentPreview}
-                      alt="Attached"
-                      className="max-w-full max-h-48 rounded-lg object-contain bg-background/50"
-                    />
-                  </div>
-                )}
-                <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                >
+                  {/* Show image preview if attached */}
+                  {message.attachmentPreview && (
+                    <div className="mb-2">
+                      <img
+                        src={message.attachmentPreview}
+                        alt="Attached"
+                        className="max-w-full max-h-48 rounded-lg object-contain bg-background/50"
+                      />
+                    </div>
+                  )}
+                  <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.content}</p>
 
-                {message.paymentRequest && (
-                  <div className="mt-3 pt-2 border-t border-border/20">
-                    <PaymentButton
-                      requirements={message.paymentRequest}
-                      onPaymentSigned={async (envelope) => {
-                        // Check if this is a chat retry action
-                        if (message.paymentRequest?.paymentId && pendingActionsRef.current.has(message.paymentRequest.paymentId)) {
-                          await retryPendingAction(message.paymentRequest.paymentId, envelope);
-                          return;
-                        }
+                  {message.paymentRequest && (
+                    <div className="mt-3 pt-2 border-t border-border/20">
+                      <PaymentButton
+                        requirements={message.paymentRequest}
+                        onPaymentSigned={async (envelope) => {
+                          // Check if this is a chat retry action
+                          if (message.paymentRequest?.paymentId && pendingActionsRef.current.has(message.paymentRequest.paymentId)) {
+                            await retryPendingAction(message.paymentRequest.paymentId, envelope);
+                            return;
+                          }
 
-                        // Store signed envelope (Legacy Flow)
-                        const storeResponse = await fetch("/api/payment/store", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            paymentId: message.paymentRequest!.paymentId,
-                            envelope,
-                            endpoint: message.paymentRequest!.endpoint,
-                          }),
-                        });
-
-                        if (storeResponse.ok) {
-                          // Notify elizaOS that payment is ready
-                          const notifyMessage = `Payment signed for ${message.paymentRequest!.endpoint}. Payment ID: ${message.paymentRequest!.paymentId}`;
-
-                          const notifyResponse = await fetch("/api/chat", {
+                          // Store signed envelope (Legacy Flow)
+                          const storeResponse = await fetch("/api/payment/store", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
-                              message: notifyMessage,
-                              conversationId: currentConversationId,
-                              walletAddress: account.address,
                               paymentId: message.paymentRequest!.paymentId,
+                              envelope,
+                              endpoint: message.paymentRequest!.endpoint,
                             }),
                           });
 
-                          if (notifyResponse.ok) {
-                            const data = await notifyResponse.json();
-                            if (data.success) {
-                              const paymentMessage: Message = {
-                                role: "assistant",
-                                content: data.response,
-                                timestamp: new Date().toISOString(),
-                              };
-                              setMessages((prev) => [...prev, paymentMessage]);
+                          if (storeResponse.ok) {
+                            // Notify elizaOS that payment is ready
+                            const notifyMessage = `Payment signed for ${message.paymentRequest!.endpoint}. Payment ID: ${message.paymentRequest!.paymentId}`;
+
+                            const notifyResponse = await fetch("/api/chat", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                message: notifyMessage,
+                                conversationId: currentConversationId,
+                                walletAddress: account.address,
+                                paymentId: message.paymentRequest!.paymentId,
+                              }),
+                            });
+
+                            if (notifyResponse.ok) {
+                              const data = await notifyResponse.json();
+                              if (data.success) {
+                                const paymentMessage: Message = {
+                                  role: "assistant",
+                                  content: data.response,
+                                  timestamp: new Date().toISOString(),
+                                };
+                                setMessages((prev) => [...prev, paymentMessage]);
+                              }
                             }
                           }
-                        }
-                      }}
-                      onError={(error) => {
-                        const errorMessage: Message = {
-                          role: "assistant",
-                          content: `Payment error: ${error.message}`,
-                          timestamp: new Date().toISOString(),
-                        };
-                        setMessages((prev) => [...prev, errorMessage]);
-                      }}
-                    />
-                  </div>
-                )}
-
+                        }}
+                        onError={(error) => {
+                          const errorMessage: Message = {
+                            role: "assistant",
+                            content: `Payment error: ${error.message}`,
+                            timestamp: new Date().toISOString(),
+                          };
+                          setMessages((prev) => [...prev, errorMessage]);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground mt-1 opacity-70 px-1">
+                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
-              <span className="text-[10px] text-muted-foreground mt-1 opacity-70 px-1">
-                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
             </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-muted rounded-2xl rounded-bl-none px-4 py-3 flex items-center space-x-2">
-              <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" />
-              <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-              <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-muted rounded-2xl rounded-bl-none px-4 py-3 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+              </div>
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Attachment Preview (Bottom Bar) */}

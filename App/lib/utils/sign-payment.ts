@@ -25,8 +25,10 @@ export async function signPaymentEnvelope(
   // Create account from private key
   const account = privateKeyToAccount(privateKey);
 
-  // Parse price to USDC amount
-  const value = parsePriceToUSDC(requirements.price);
+  // Parse price to USDC amount (use maxAmountRequired if available, fall back to price)
+  const value = requirements.maxAmountRequired
+    ? BigInt(requirements.maxAmountRequired)
+    : parsePriceToUSDC(requirements.price || "$0.01");
 
   // Generate nonce
   const nonce = generateNonce();
