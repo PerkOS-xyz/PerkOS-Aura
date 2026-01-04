@@ -60,11 +60,16 @@ export class FirebaseAdapter {
         ? memory.content
         : memory.content?.text || JSON.stringify(memory.content);
 
+    // Extract attachment info from content if present
+    const contentObj = typeof memory.content === "object" ? memory.content : {};
+    const attachmentUrl = (contentObj as any)?.attachmentUrl || null;
+    const attachmentType = (contentObj as any)?.attachmentType || null;
+
     const conversationId = memory.roomId || this.roomId;
     const messagesPath = getConversationMessagesPath(this.userWalletAddress, conversationId);
     const messageRef = this.db.collection(messagesPath).doc();
 
-    const messageData = {
+    const messageData: Record<string, any> = {
       id: messageRef.id,
       conversation_id: conversationId,
       user_wallet_address: this.userWalletAddress,
@@ -74,10 +79,17 @@ export class FirebaseAdapter {
       created_at: memory.createdAt ? new Date(memory.createdAt) : FieldValue.serverTimestamp(),
     };
 
+    // Only add attachment fields if they exist
+    if (attachmentUrl) {
+      messageData.attachment_url = attachmentUrl;
+      messageData.attachment_type = attachmentType || "image";
+    }
+
     console.log("[FirebaseAdapter] createMemory - creating message", {
       conversationId,
       messageRole: messageData.message_role,
       projectId: messageData.project_id,
+      hasAttachment: !!attachmentUrl,
     });
 
     await messageRef.set(messageData);
@@ -123,15 +135,23 @@ export class FirebaseAdapter {
 
     const memories = snapshot.docs.map((doc) => {
       const data = doc.data();
+      const contentObj: Record<string, any> = {
+        text: data.message_content,
+      };
+
+      // Include attachment data if present
+      if (data.attachment_url) {
+        contentObj.attachmentUrl = data.attachment_url;
+        contentObj.attachmentType = data.attachment_type || "image";
+      }
+
       return {
         id: doc.id,
         type: "message" as const,
         roomId: data.conversation_id || roomId,
         userId: data.message_role === "user" ? this.userWalletAddress : undefined,
         agentId: data.message_role === "assistant" ? "eliza-agent" : undefined,
-        content: {
-          text: data.message_content,
-        },
+        content: contentObj,
         createdAt: data.created_at?.toMillis?.() || new Date(data.created_at).getTime(),
       };
     }) as unknown as Memory[];

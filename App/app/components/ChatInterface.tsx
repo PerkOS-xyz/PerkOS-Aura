@@ -113,15 +113,17 @@ export function ChatInterface({
         // So it closes over the scope. But if I don't use useCallback, it's recreated every render so it sees fresh state.
 
         // However, updating state based on current state is safe.
-        // Updating currentConversationId:
-        setCurrentConversationId(prevId => {
-          if (!prevId) {
-            locallyCreatedConversationsRef.current.add(data.conversationId);
-            onConversationChange?.(data.conversationId, action.description);
-            return data.conversationId;
-          }
-          return prevId;
-        });
+        // We need to check and update outside the setter to avoid calling onConversationChange during state update
+        if (!currentConversationId) {
+          locallyCreatedConversationsRef.current.add(data.conversationId);
+          setCurrentConversationId(data.conversationId);
+          // Use setTimeout to defer the callback to avoid "setState during render" warning
+          const conversationIdToNotify = data.conversationId;
+          const descriptionToNotify = action.description;
+          setTimeout(() => {
+            onConversationChange?.(conversationIdToNotify, descriptionToNotify);
+          }, 0);
+        }
       }
 
       // Cleanup
@@ -406,7 +408,12 @@ export function ChatInterface({
           // Mark this conversation as locally created so we don't reload from server
           locallyCreatedConversationsRef.current.add(data.conversationId);
           setCurrentConversationId(data.conversationId);
-          onConversationChange?.(data.conversationId, `🎤 "${data.transcription}"`);
+          // Use setTimeout to defer the callback to avoid "setState during render" warning
+          const conversationIdToNotify = data.conversationId;
+          const transcriptionMessage = `🎤 "${data.transcription}"`;
+          setTimeout(() => {
+            onConversationChange?.(conversationIdToNotify, transcriptionMessage);
+          }, 0);
         }
 
         // Update user message with transcription
@@ -622,10 +629,15 @@ export function ChatInterface({
         }
 
         // Notify parent to add conversation to sidebar (only once per conversation)
+        // Use setTimeout to defer the callback to avoid "setState during render" warning
         if (needsNotification) {
           notifiedConversationsRef.current.add(data.conversationId);
           console.log("[ChatInterface] Calling onConversationChange to add to sidebar...");
-          onConversationChange?.(data.conversationId, messageText || userMessage.content);
+          const conversationIdToNotify = data.conversationId;
+          const firstMessageToNotify = messageText || userMessage.content;
+          setTimeout(() => {
+            onConversationChange?.(conversationIdToNotify, firstMessageToNotify);
+          }, 0);
         }
       }
 

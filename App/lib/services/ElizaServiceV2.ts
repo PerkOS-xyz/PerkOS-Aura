@@ -19,6 +19,8 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  attachmentPreview?: string;
+  attachmentType?: "audio" | "image";
 }
 
 export interface ChatRequest {
@@ -281,15 +283,26 @@ Be helpful, clear, and guide users through AI operations step by step.`;
       }
 
       const chatMessages = memories
-        .map((m: any) => ({
-          role: (m.userId ? "user" : "assistant") as "user" | "assistant",
-          content: typeof m.content === "string" ? m.content : m.content?.text || "",
-          timestamp: m.createdAt
-            ? typeof m.createdAt === "number"
-              ? new Date(m.createdAt).toISOString()
-              : new Date(m.createdAt).toISOString()
-            : new Date().toISOString(),
-        }))
+        .map((m: any) => {
+          const contentObj = typeof m.content === "object" ? m.content : { text: m.content };
+          const message: ChatMessage = {
+            role: (m.userId ? "user" : "assistant") as "user" | "assistant",
+            content: contentObj?.text || "",
+            timestamp: m.createdAt
+              ? typeof m.createdAt === "number"
+                ? new Date(m.createdAt).toISOString()
+                : new Date(m.createdAt).toISOString()
+              : new Date().toISOString(),
+          };
+
+          // Include attachment data if present
+          if (contentObj?.attachmentUrl) {
+            message.attachmentPreview = contentObj.attachmentUrl;
+            message.attachmentType = contentObj.attachmentType || "image";
+          }
+
+          return message;
+        })
         .filter((m) => m.content) // Filter out empty messages
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 

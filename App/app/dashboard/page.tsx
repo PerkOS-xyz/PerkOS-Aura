@@ -394,16 +394,22 @@ export default function DashboardPage() {
     setSelectedConversation(conversationId);
 
     // Optimistically add the new conversation to the list if it doesn't exist
-    const exists = conversations.some((c) => c.conversation_id === conversationId);
-    if (!exists) {
+    // Use callback form to ensure we're checking against the latest state
+    setConversations((prev) => {
+      const exists = prev.some((c) => c.conversation_id === conversationId);
+      if (exists) {
+        // Already exists, return unchanged
+        return prev;
+      }
+      // Add new conversation at the beginning
       const newConversation: Conversation = {
         conversation_id: conversationId,
         first_message: firstMessage || "New conversation",
         last_message_at: new Date().toISOString(),
         message_count: 1,
       };
-      setConversations((prev) => [newConversation, ...prev]);
-    }
+      return [newConversation, ...prev];
+    });
 
     // Refresh conversations from server to ensure we have the latest data
     // Use preserveOptimistic=true to keep the optimistic update if server hasn't processed it yet
