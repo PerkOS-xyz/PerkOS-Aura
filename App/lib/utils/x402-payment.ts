@@ -31,6 +31,9 @@ export interface PaymentRequirements {
   resource?: string; // e.g., "/api/chat/image"
   scheme?: string; // e.g., "exact"
   asset?: string; // USDC contract address
+  // Token info for EIP-712 domain (from extra field)
+  tokenName?: string; // Token name from contract (e.g., "USD Coin")
+  tokenVersion?: string; // EIP-3009 version (always "2")
 }
 
 /**

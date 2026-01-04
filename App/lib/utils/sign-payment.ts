@@ -48,9 +48,13 @@ export async function signPaymentEnvelope(
     validBefore,
   };
 
-  // Create EIP-712 domain
-  const domain = createEIP712Domain(requirements.network);
-  
+  // Create EIP-712 domain (use detected token name if available)
+  const domain = createEIP712Domain(
+    requirements.network,
+    undefined, // Use default USDC address
+    requirements.tokenName // Use detected token name from requirements
+  );
+
   console.log("🔐 Signing payment envelope:", {
     network: requirements.network,
     domain,

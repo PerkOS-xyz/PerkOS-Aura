@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { x402Config, paymentRoutes } from "@/lib/config/x402";
 import { toCAIP2Network, parsePriceToUSDC, getUSDCAddress } from "@/lib/utils/x402-payment";
+import { detectTokenInfo } from "@/lib/utils/token-detection";
 
 export interface PaymentEnvelope {
   network: string;
@@ -173,9 +174,17 @@ export async function verifyPayment(
     // Get USDC address for the network (use legacy format for lookup)
     const usdcAddress = getUSDCAddress(routeConfig.network);
 
-    // USDC token info (standard across all chains)
-    const tokenName = "USD Coin";
-    const tokenVersion = "2";
+    // Detect actual token info from the contract (critical for EIP-712 domain matching)
+    const tokenInfo = await detectTokenInfo(usdcAddress, routeConfig.network);
+    const tokenName = tokenInfo?.name || "USD Coin";
+    const tokenVersion = "2"; // EIP-3009 version is always "2"
+
+    console.log("🔍 Token info for verification:", {
+      network: routeConfig.network,
+      usdcAddress,
+      detectedName: tokenInfo?.name,
+      usingName: tokenName,
+    });
 
     let verifyResponse: Response;
     try {
@@ -272,9 +281,17 @@ export async function settlePayment(
     // Get USDC address for the network (use legacy format for lookup)
     const usdcAddress = getUSDCAddress(envelope.network);
 
-    // USDC token info (standard across all chains)
-    const tokenName = "USD Coin";
-    const tokenVersion = "2";
+    // Detect actual token info from the contract (critical for EIP-712 domain matching)
+    const tokenInfo = await detectTokenInfo(usdcAddress, envelope.network);
+    const tokenName = tokenInfo?.name || "USD Coin";
+    const tokenVersion = "2"; // EIP-3009 version is always "2"
+
+    console.log("🔍 Token info for settlement:", {
+      network: envelope.network,
+      usdcAddress,
+      detectedName: tokenInfo?.name,
+      usingName: tokenName,
+    });
 
     let settleResponse: Response;
     try {
