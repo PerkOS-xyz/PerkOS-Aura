@@ -92,10 +92,14 @@ export async function POST(request: NextRequest) {
       : `Here's my analysis of the image:\n\n${analysis}`;
 
     if (adapter) {
-      // Store user's image share message
+      // Store user's image share message with attachment URL
       await adapter.createMemory({
         type: MemoryType.MESSAGE,
-        content: { text: userMessageForHistory },
+        content: {
+          text: userMessageForHistory,
+          attachmentUrl: imageToAnalyze, // Store the image URL for history
+          attachmentType: "image",
+        },
         roomId: conversationId,
         userId: walletAddress.toLowerCase(),
         createdAt: new Date(),
