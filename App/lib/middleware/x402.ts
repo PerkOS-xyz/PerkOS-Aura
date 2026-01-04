@@ -548,10 +548,18 @@ export async function verifyX402Payment(
   if (!settlement.success) {
     console.error("❌ Payment settlement failed:", settlement.error);
 
-    // Provide helpful error message for sponsor wallet issues
+    // Provide helpful error messages for common issues
     let errorMessage = settlement.error || "Payment settlement failed";
     if (errorMessage.includes("sponsor wallet") || errorMessage.includes("No sponsor")) {
       errorMessage = "Payment settlement failed: No sponsor wallet configured for this payer. The facilitator requires a sponsor wallet to pay for gas fees. Please configure a sponsor wallet in the facilitator dashboard.";
+    } else if (errorMessage.includes("authorization is used or canceled")) {
+      // This error from USDC contract typically means:
+      // 1. The nonce was already used (unlikely with fresh nonces)
+      // 2. Transaction simulation detected an issue
+      // 3. Possible RPC state inconsistency
+      errorMessage = "Payment authorization failed. The transaction could not be processed. Please try signing a new payment. If this persists, check your USDC balance and try again in a few seconds.";
+    } else if (errorMessage.includes("TRANSACTION_SIMULATION_FAILED")) {
+      errorMessage = "Payment transaction simulation failed. Please try again in a few seconds.";
     }
 
     return {
