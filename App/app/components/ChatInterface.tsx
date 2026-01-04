@@ -13,6 +13,8 @@ interface Message {
   paymentRequest?: PaymentRequirements & { paymentId: string };
   attachmentType?: "audio" | "image";
   attachmentPreview?: string;
+  transactionHash?: string;
+  paymentNetwork?: string;
 }
 
 interface ChatInterfaceProps {
@@ -23,6 +25,137 @@ interface ChatInterfaceProps {
 
 // Recording states
 type RecordingState = "idle" | "recording" | "processing";
+
+// Helper to parse and extract payment request JSON from message content
+interface ParsedPaymentInfo {
+  beforeText: string;
+  paymentInfo: {
+    endpoint: string;
+    price: string;
+    description: string;
+    prompt?: string;
+    network?: string;
+    transactionHash?: string;
+  } | null;
+  afterText: string;
+}
+
+// Get block explorer URL based on network (x402 V2 supported networks)
+function getBlockExplorerUrl(network: string, txHash: string): string {
+  const explorers: Record<string, string> = {
+    // Avalanche
+    avalanche: "https://snowtrace.io/tx",
+    "avalanche-fuji": "https://testnet.snowtrace.io/tx",
+    // Base
+    base: "https://basescan.org/tx",
+    "base-sepolia": "https://sepolia.basescan.org/tx",
+    // Ethereum
+    ethereum: "https://etherscan.io/tx",
+    sepolia: "https://sepolia.etherscan.io/tx",
+    // Celo
+    celo: "https://explorer.celo.org/mainnet/tx",
+    "celo-sepolia": "https://celo-sepolia.blockscout.com/tx",
+    // Polygon
+    polygon: "https://polygonscan.com/tx",
+    "polygon-amoy": "https://amoy.polygonscan.com/tx",
+    // Arbitrum
+    arbitrum: "https://arbiscan.io/tx",
+    "arbitrum-sepolia": "https://sepolia.arbiscan.io/tx",
+    // Optimism
+    optimism: "https://optimistic.etherscan.io/tx",
+    "optimism-sepolia": "https://sepolia-optimism.etherscan.io/tx",
+    // Monad
+    monad: "https://monadexplorer.com/tx",
+    "monad-testnet": "https://testnet.monadexplorer.com/tx",
+  };
+  const baseUrl = explorers[network.toLowerCase()] || "https://snowtrace.io/tx";
+  return `${baseUrl}/${txHash}`;
+}
+
+function parsePaymentRequestFromContent(content: string): ParsedPaymentInfo {
+  // Match ```json ... ``` code block containing paymentRequest
+  const jsonBlockRegex = /```json\s*\n?\{[\s\S]*?"paymentRequest"[\s\S]*?\}\s*\n?```/;
+  const match = content.match(jsonBlockRegex);
+
+  if (!match) {
+    return { beforeText: content, paymentInfo: null, afterText: "" };
+  }
+
+  const jsonBlock = match[0];
+  const startIndex = content.indexOf(jsonBlock);
+  const beforeText = content.substring(0, startIndex).trim();
+  const afterText = content.substring(startIndex + jsonBlock.length).trim();
+
+  try {
+    // Extract the JSON content from the code block
+    const jsonContent = jsonBlock.replace(/```json\s*\n?/, "").replace(/\n?```$/, "");
+    const parsed = JSON.parse(jsonContent);
+
+    if (parsed.paymentRequest) {
+      return {
+        beforeText,
+        paymentInfo: {
+          endpoint: parsed.paymentRequest.endpoint || "",
+          price: parsed.paymentRequest.price || "",
+          description: parsed.paymentRequest.description || "",
+          prompt: parsed.paymentRequest.requestData?.prompt,
+          network: parsed.paymentRequest.network,
+          transactionHash: parsed.transactionHash, // May be added after payment
+        },
+        afterText,
+      };
+    }
+  } catch {
+    // JSON parse failed, return original content
+  }
+
+  return { beforeText: content, paymentInfo: null, afterText: "" };
+}
+
+// Component to display paid transaction badge
+function PaidBadge({ paymentInfo }: { paymentInfo: ParsedPaymentInfo["paymentInfo"] }) {
+  if (!paymentInfo) return null;
+
+  const explorerUrl = paymentInfo.transactionHash && paymentInfo.network
+    ? getBlockExplorerUrl(paymentInfo.network, paymentInfo.transactionHash)
+    : null;
+
+  return (
+    <div className="my-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/20 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <span className="text-xs font-medium text-green-500">Paid</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{paymentInfo.price}</span>
+        {explorerUrl && (
+          <a
+            href={explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            View on Explorer
+          </a>
+        )}
+      </div>
+      <div className="text-xs text-muted-foreground">
+        <span className="font-medium">{paymentInfo.description}</span>
+        {paymentInfo.endpoint && (
+          <span className="ml-2 opacity-70">• {paymentInfo.endpoint}</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function ChatInterface({
   conversationId: initialConversationId,
@@ -106,6 +239,21 @@ export function ChatInterface({
 
       const data = await response.json();
 
+      // Extract transaction hash from PAYMENT-RESPONSE header
+      let transactionHash: string | undefined;
+      let paymentNetwork: string | undefined;
+      const paymentResponseHeader = response.headers.get("PAYMENT-RESPONSE");
+      if (paymentResponseHeader) {
+        try {
+          const paymentResponse = JSON.parse(atob(paymentResponseHeader));
+          transactionHash = paymentResponse.transactionHash;
+          paymentNetwork = paymentResponse.network || envelope.network;
+          console.log("[ChatInterface] Payment settled:", { transactionHash, paymentNetwork });
+        } catch (e) {
+          console.warn("[ChatInterface] Failed to parse PAYMENT-RESPONSE header:", e);
+        }
+      }
+
       if (!response.ok || !data.success) {
         // Include detailed reason if available (x402 middleware returns reason + details)
         const errorMsg = data.reason || data.details || data.error || data.message || "Retry failed";
@@ -146,15 +294,59 @@ export function ChatInterface({
         responseContent = data.response || data.analysis || data.transcription || data.data?.text || "Success!";
       }
 
-      // Add assistant response
+      // Add assistant response with transaction info
       const assistantMessage: Message = {
         role: "assistant",
         content: responseContent,
         timestamp: new Date().toISOString(),
         attachmentPreview,
         attachmentType,
+        transactionHash,
+        paymentNetwork,
       };
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Save the generated result to the database so it persists
+      // Use currentConversationId which should be set from the initial request
+      const conversationIdForSave = currentConversationId || data.conversationId;
+      if (conversationIdForSave && account?.address) {
+        try {
+          console.log("[ChatInterface] Saving generated content to database", {
+            conversationId: conversationIdForSave,
+            hasAttachment: !!attachmentPreview,
+            attachmentType,
+            transactionHash,
+            paymentNetwork,
+          });
+
+          // Save via the chat API (which uses ElizaService)
+          await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: responseContent,
+              walletAddress: account.address,
+              conversationId: conversationIdForSave,
+              projectId: projectId,
+              // Include attachment data so it can be stored
+              attachment: attachmentPreview ? {
+                type: attachmentType,
+                data: attachmentPreview,
+              } : undefined,
+              // Include payment transaction info for persistence
+              transactionHash,
+              paymentNetwork,
+              // Mark this as a system message to store without generating a new response
+              storeOnly: true,
+              role: "assistant",
+            }),
+          });
+          console.log("[ChatInterface] Generated content saved successfully");
+        } catch (saveError) {
+          console.error("[ChatInterface] Failed to save generated content:", saveError);
+          // Don't throw - the image is displayed, just not persisted
+        }
+      }
 
       // Handle conversation updates if needed
       if (data.conversationId) {
@@ -267,6 +459,9 @@ export function ChatInterface({
           console.log("[ChatInterface] New Chat requested - clearing messages");
           setCurrentConversationId(null);
           setMessages([]);
+          // Clear locally created conversations so they reload from server next time
+          locallyCreatedConversationsRef.current.clear();
+          console.log("[ChatInterface] Cleared locallyCreatedConversationsRef");
         }
       }
     }
@@ -824,7 +1019,7 @@ export function ChatInterface({
           {/* Hero Section */}
           <div className="text-center space-y-2">
             <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
-              Hello, {account.address.slice(0, 4)}...
+              Hello, {account.address.slice(0, 6)}...{account.address.slice(-5)}
             </h1>
             <p className="text-xl text-muted-foreground">
               How can I help you today?
@@ -950,7 +1145,57 @@ export function ChatInterface({
                   }`}
                 >
                   {/* Show image preview if attached */}
-                  {message.attachmentPreview && (
+                  {message.attachmentPreview && message.attachmentType === "image" && (
+                    <div className="mb-2 inline-block relative group">
+                      <img
+                        src={message.attachmentPreview}
+                        alt="Generated image"
+                        className="max-w-full max-h-64 rounded-lg object-contain bg-background/50 block"
+                      />
+                      {/* Download overlay on hover - positioned relative to image */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-3 pointer-events-none group-hover:pointer-events-auto">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            // Download the image
+                            const link = document.createElement('a');
+                            link.href = message.attachmentPreview!;
+                            link.download = `generated-image-${Date.now()}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-gray-800 rounded-lg font-medium text-sm transition-colors"
+                          title="Download image"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                          Download
+                        </button>
+                        <a
+                          href={message.attachmentPreview}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-gray-800 rounded-lg font-medium text-sm transition-colors no-underline"
+                          title="Open in new tab"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                          Open
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {/* Show other attachment types (non-image) */}
+                  {message.attachmentPreview && !message.attachmentType && (
                     <div className="mb-2">
                       <img
                         src={message.attachmentPreview}
@@ -959,7 +1204,49 @@ export function ChatInterface({
                       />
                     </div>
                   )}
-                  <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  {(() => {
+                    const parsed = parsePaymentRequestFromContent(message.content);
+                    if (parsed.paymentInfo) {
+                      return (
+                        <>
+                          {parsed.beforeText && (
+                            <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{parsed.beforeText}</p>
+                          )}
+                          <PaidBadge paymentInfo={parsed.paymentInfo} />
+                          {parsed.afterText && (
+                            <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{parsed.afterText}</p>
+                          )}
+                        </>
+                      );
+                    }
+                    return <p className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.content}</p>;
+                  })()}
+
+                  {/* Show transaction link for current session messages with tx hash */}
+                  {message.transactionHash && message.paymentNetwork && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/20 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        <span className="text-xs font-medium text-green-500">Paid</span>
+                      </div>
+                      <a
+                        href={getBlockExplorerUrl(message.paymentNetwork, message.transactionHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                        View on Explorer
+                      </a>
+                    </div>
+                  )}
 
                   {message.paymentRequest && (
                     <div className="mt-3 pt-2 border-t border-border/20">

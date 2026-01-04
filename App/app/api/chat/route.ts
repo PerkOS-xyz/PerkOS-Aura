@@ -15,6 +15,34 @@ export async function POST(request: NextRequest) {
 
     // Use elizaOS V2 (full framework)
     const elizaServiceV2 = getElizaServiceV2(validatedData.walletAddress);
+
+    // Handle storeOnly mode - just store the message without generating a response
+    if (validatedData.storeOnly && validatedData.role === "assistant") {
+      console.log("[Chat API] storeOnly mode - storing assistant message", {
+        conversationId: validatedData.conversationId,
+        hasAttachment: !!validatedData.attachment,
+        attachmentType: validatedData.attachment?.type,
+        transactionHash: validatedData.transactionHash,
+        paymentNetwork: validatedData.paymentNetwork,
+      });
+
+      await elizaServiceV2.storeAssistantMessage({
+        message: validatedData.message,
+        conversationId: validatedData.conversationId || undefined,
+        projectId: validatedData.projectId || undefined,
+        attachment: validatedData.attachment || undefined,
+        transactionHash: validatedData.transactionHash,
+        paymentNetwork: validatedData.paymentNetwork,
+      });
+
+      return NextResponse.json({
+        success: true,
+        stored: true,
+        conversationId: validatedData.conversationId,
+      });
+    }
+
+    // Normal mode - process message and generate response
     const response = await elizaServiceV2.processMessage({
       message: validatedData.message,
       conversationId: validatedData.conversationId || undefined,
