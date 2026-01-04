@@ -8,7 +8,30 @@ interface ServiceOption {
     description: string;
     icon: React.ReactNode;
     category: "Vision & Audio" | "NLP" | "Business" | "Developer" | "Advanced";
-    promptTemplate: string;
+    promptTemplate: string | (() => string);
+}
+
+// Random image generation prompts for variety
+const imagePrompts = [
+    "Generate an image of a futuristic city with flying cars in a cyberpunk style.",
+    "Generate an image of a serene Japanese garden with cherry blossoms and a koi pond.",
+    "Generate an image of an astronaut floating in space with Earth in the background.",
+    "Generate an image of a magical forest with glowing mushrooms and fireflies at night.",
+    "Generate an image of a cozy coffee shop on a rainy day with warm lighting.",
+    "Generate an image of a majestic dragon perched on a mountain peak at sunset.",
+    "Generate an image of an underwater city with bioluminescent architecture.",
+    "Generate an image of a steampunk airship floating above Victorian London.",
+    "Generate an image of a crystal cave with rainbow light refractions.",
+    "Generate an image of a robot chef cooking in a high-tech kitchen.",
+    "Generate an image of a mystical library with floating books and candles.",
+    "Generate an image of a northern lights display over a snowy mountain landscape.",
+    "Generate an image of a treehouse village connected by rope bridges in a giant forest.",
+    "Generate an image of a neon-lit street market in a futuristic Asian city.",
+    "Generate an image of a phoenix rising from flames in a dramatic sky.",
+];
+
+function getRandomImagePrompt(): string {
+    return imagePrompts[Math.floor(Math.random() * imagePrompts.length)];
 }
 
 interface ServiceSelectorProps {
@@ -38,7 +61,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "Generate Image",
             description: "Create images from text descriptions",
             category: "Vision & Audio",
-            promptTemplate: "Generate an image of a futuristic city with flying cars in a cyberpunk style.",
+            promptTemplate: getRandomImagePrompt,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -250,7 +273,12 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
                 {filteredServices.map((service) => (
                     <button
                         key={service.id}
-                        onClick={() => onSelect(service.promptTemplate)}
+                        onClick={() => {
+                            const prompt = typeof service.promptTemplate === "function"
+                                ? service.promptTemplate()
+                                : service.promptTemplate;
+                            onSelect(prompt);
+                        }}
                         className="flex flex-col items-start p-4 h-full bg-card border border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 rounded-xl transition-all text-left group"
                     >
                         <div className="p-2 bg-muted rounded-lg text-primary mb-3 group-hover:scale-110 transition-transform duration-300">

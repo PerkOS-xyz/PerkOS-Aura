@@ -5,9 +5,11 @@
 
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
+import { getStorage, Storage } from "firebase-admin/storage";
 
 let firebaseApp: App | null = null;
 let firestore: Firestore | null = null;
+let storage: Storage | null = null;
 
 /**
  * Initialize Firebase Admin SDK
@@ -81,6 +83,19 @@ export function getFirestoreInstance(): Firestore {
     firestore = getFirestore(firebaseApp!);
   }
   return firestore;
+}
+
+/**
+ * Get Firebase Storage instance
+ */
+export function getStorageInstance(): Storage {
+  if (!storage) {
+    if (!firebaseApp) {
+      initializeFirebase();
+    }
+    storage = getStorage(firebaseApp!);
+  }
+  return storage;
 }
 
 /**

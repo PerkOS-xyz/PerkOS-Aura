@@ -14,6 +14,7 @@ import { MemoryType } from "@elizaos/core";
 import { getAgentRuntime } from "./elizaos/AgentRuntimeManager";
 import OpenAI from "openai";
 import { aiServiceConfig } from "@/lib/config/x402";
+import { getStorageService } from "./StorageService";
 
 // Type definitions
 export interface ChatMessage {
@@ -22,6 +23,8 @@ export interface ChatMessage {
   timestamp: string;
   attachmentPreview?: string;
   attachmentType?: "audio" | "image";
+  transactionHash?: string;
+  paymentNetwork?: string;
 }
 
 export interface ChatRequest {
@@ -405,6 +408,14 @@ For CODE GENERATION requests:
             message.attachmentType = contentObj.attachmentType || "image";
           }
 
+          // Include transaction data if present (for paid services)
+          if (contentObj?.transactionHash) {
+            message.transactionHash = contentObj.transactionHash;
+          }
+          if (contentObj?.paymentNetwork) {
+            message.paymentNetwork = contentObj.paymentNetwork;
+          }
+
           return message;
         })
         .filter((m) => m.content) // Filter out empty messages
@@ -419,6 +430,123 @@ For CODE GENERATION requests:
     } catch (error) {
       console.error("[ElizaServiceV2] Failed to get conversation history:", error);
       return [];
+    }
+  }
+
+  /**
+   * Store an assistant message directly (for generated content after payment)
+   * This allows storing images/audio results without triggering a new AI response
+   *
+   * If attachment data is a temporary URL (e.g., from Replicate) or base64,
+   * it will be uploaded to Firebase Storage and the permanent URL will be stored.
+   */
+  async storeAssistantMessage(request: {
+    message: string;
+    conversationId?: string;
+    projectId?: string;
+    attachment?: {
+      type: "image" | "audio";
+      data: string; // base64 data URL or external URL
+    };
+    transactionHash?: string;
+    paymentNetwork?: string;
+  }): Promise<void> {
+    const conversationId = request.conversationId || `conv_${this.userWalletAddress}_${Date.now()}`;
+    const projectId = request.projectId;
+
+    console.log("[ElizaServiceV2] storeAssistantMessage called", {
+      conversationId,
+      projectId,
+      userWallet: this.userWalletAddress,
+      hasAttachment: !!request.attachment,
+      attachmentType: request.attachment?.type,
+      transactionHash: request.transactionHash,
+      paymentNetwork: request.paymentNetwork,
+    });
+
+    try {
+      const runtime = await getAgentRuntime(this.userWalletAddress);
+      const adapter = (runtime as any).adapter;
+
+      if (!adapter) {
+        throw new Error("Runtime adapter not available");
+      }
+
+      // Build content object with optional attachment
+      const content: any = {
+        text: request.message,
+      };
+
+      // Process attachment: upload to Firebase Storage if needed
+      if (request.attachment) {
+        const storageService = getStorageService();
+        let permanentUrl = request.attachment.data;
+
+        // Check if we need to upload to Firebase Storage
+        // Skip if it's already a Firebase Storage URL
+        if (!storageService.isFirebaseStorageUrl(request.attachment.data)) {
+          console.log("[ElizaServiceV2] Uploading attachment to Firebase Storage", {
+            type: request.attachment.type,
+            isBase64: request.attachment.data.startsWith("data:"),
+            isUrl: request.attachment.data.startsWith("http"),
+          });
+
+          try {
+            const uploadResult = await storageService.upload(request.attachment.data, {
+              walletAddress: this.userWalletAddress,
+              conversationId,
+              type: request.attachment.type,
+            });
+
+            permanentUrl = uploadResult.url;
+            console.log("[ElizaServiceV2] Attachment uploaded to Firebase Storage", {
+              permanentUrl: permanentUrl.substring(0, 80) + "...",
+              path: uploadResult.path,
+            });
+          } catch (uploadError) {
+            console.error("[ElizaServiceV2] Failed to upload attachment to Firebase Storage:", uploadError);
+            // Fall back to storing the original URL/data
+            // This means temporary URLs may expire, but at least we don't lose the message
+            console.warn("[ElizaServiceV2] Falling back to original attachment data");
+          }
+        }
+
+        content.attachmentUrl = permanentUrl;
+        content.attachmentType = request.attachment.type;
+      }
+
+      // Add transaction data if present (for paid services)
+      if (request.transactionHash) {
+        content.transactionHash = request.transactionHash;
+      }
+      if (request.paymentNetwork) {
+        content.paymentNetwork = request.paymentNetwork;
+      }
+
+      // Create assistant memory
+      const assistantMemory = {
+        id: `${conversationId}_assistant_${Date.now()}`,
+        userId: undefined, // No userId = assistant message
+        agentId: `agent_${this.userWalletAddress}`,
+        roomId: conversationId,
+        content,
+        type: MemoryType.MESSAGE,
+        createdAt: Date.now(),
+      };
+
+      console.log("[ElizaServiceV2] Storing assistant message via adapter", {
+        conversationId,
+        hasAttachment: !!request.attachment,
+        attachmentType: request.attachment?.type,
+      });
+
+      // Store via adapter
+      await adapter.createMemory(assistantMemory, projectId);
+
+      console.log("[ElizaServiceV2] Assistant message stored successfully");
+    } catch (error) {
+      console.error("[ElizaServiceV2] Failed to store assistant message:", error);
+      throw error;
     }
   }
 }

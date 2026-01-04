@@ -149,7 +149,7 @@ export function PaymentButton({
 
   if (!account) {
     return (
-      <div className="text-sm text-gray-400">
+      <div className="text-sm text-muted-foreground">
         Please connect your wallet to sign payment
       </div>
     );
@@ -159,10 +159,10 @@ export function PaymentButton({
   const isWrongChain = chain?.id !== requiredChainId;
 
   return (
-    <div className="border border-cyan-500/30 rounded-lg p-4 bg-cyan-500/10">
+    <div className="border border-primary/30 rounded-lg p-4 bg-primary/10 w-full max-w-md">
       <div className="mb-3">
-        <p className="text-sm font-medium text-cyan-400 mb-1">Payment Required</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-sm font-medium text-primary mb-1">Payment Required</p>
+        <p className="text-xs text-muted-foreground">
           {requirements.endpoint || requirements.resource} requires {formatPrice(requirements.price, requirements.maxAmountRequired)} payment
         </p>
       </div>
@@ -190,11 +190,11 @@ export function PaymentButton({
       <button
         onClick={handleSign}
         disabled={isSigning || isWrongChain}
-        className="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+        className="w-full px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
       >
         {isSigning && (
           <svg
-            className="animate-spin h-4 w-4 text-white"
+            className="animate-spin h-4 w-4"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -218,13 +218,13 @@ export function PaymentButton({
       </button>
 
       {isSigning && (
-        <p className="text-xs text-cyan-400 mt-2 animate-pulse">
+        <p className="text-xs text-primary mt-2 animate-pulse">
           ⏳ Signing payment and processing request...
         </p>
       )}
 
       {!isSigning && (
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-muted-foreground mt-2">
           This will sign a payment authorization. The facilitator will process the payment
           on-chain (gasless).
         </p>
