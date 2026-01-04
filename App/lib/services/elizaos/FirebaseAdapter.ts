@@ -65,6 +65,10 @@ export class FirebaseAdapter {
     const attachmentUrl = (contentObj as any)?.attachmentUrl || null;
     const attachmentType = (contentObj as any)?.attachmentType || null;
 
+    // Extract transaction info from content if present (for paid services)
+    const transactionHash = (contentObj as any)?.transactionHash || null;
+    const paymentNetwork = (contentObj as any)?.paymentNetwork || null;
+
     const conversationId = memory.roomId || this.roomId;
     const messagesPath = getConversationMessagesPath(this.userWalletAddress, conversationId);
     const messageRef = this.db.collection(messagesPath).doc();
@@ -85,11 +89,20 @@ export class FirebaseAdapter {
       messageData.attachment_type = attachmentType || "image";
     }
 
+    // Only add transaction fields if they exist (for paid services)
+    if (transactionHash) {
+      messageData.transaction_hash = transactionHash;
+    }
+    if (paymentNetwork) {
+      messageData.payment_network = paymentNetwork;
+    }
+
     console.log("[FirebaseAdapter] createMemory - creating message", {
       conversationId,
       messageRole: messageData.message_role,
       projectId: messageData.project_id,
       hasAttachment: !!attachmentUrl,
+      hasTransaction: !!transactionHash,
     });
 
     await messageRef.set(messageData);
@@ -143,6 +156,14 @@ export class FirebaseAdapter {
       if (data.attachment_url) {
         contentObj.attachmentUrl = data.attachment_url;
         contentObj.attachmentType = data.attachment_type || "image";
+      }
+
+      // Include transaction data if present (for paid services)
+      if (data.transaction_hash) {
+        contentObj.transactionHash = data.transaction_hash;
+      }
+      if (data.payment_network) {
+        contentObj.paymentNetwork = data.payment_network;
       }
 
       return {
