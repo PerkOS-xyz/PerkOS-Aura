@@ -39,7 +39,7 @@ export function initializeFirebase(): App {
     } catch (error) {
       throw new Error(
         "FIREBASE_SERVICE_ACCOUNT must be a valid JSON string. " +
-          "Please provide the service account JSON as a stringified JSON in the environment variable."
+        "Please provide the service account JSON as a stringified JSON in the environment variable."
       );
     }
   } else if (serviceAccountPath) {
@@ -51,19 +51,20 @@ export function initializeFirebase(): App {
     } catch (error) {
       throw new Error(
         `Failed to load Firebase service account from path: ${serviceAccountPath}. ` +
-          "Please ensure the file exists and is valid JSON."
+        "Please ensure the file exists and is valid JSON."
       );
     }
   } else {
     throw new Error(
       "Missing Firebase service account credentials. " +
-        "Please provide either FIREBASE_SERVICE_ACCOUNT (JSON string) or " +
-        "FIREBASE_SERVICE_ACCOUNT_PATH (file path) environment variable."
+      "Please provide either FIREBASE_SERVICE_ACCOUNT (JSON string) or " +
+      "FIREBASE_SERVICE_ACCOUNT_PATH (file path) environment variable."
     );
   }
 
   firebaseApp = initializeApp({
     credential: cert(credentials),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
   });
 
   return firebaseApp;
