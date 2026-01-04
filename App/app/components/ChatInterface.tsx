@@ -59,22 +59,41 @@ export function ChatInterface({
     description: string;
   }>>(new Map());
 
+  // Track payment IDs currently being processed to prevent duplicate settlements
+  const processingPaymentsRef = useRef<Set<string>>(new Set());
+
   // Helper to retry pending action with signature
   const retryPendingAction = async (paymentId: string, envelope: any) => {
     const action = pendingActionsRef.current.get(paymentId);
     if (!action) return;
 
-    console.log("[ChatInterface] Retrying action with signature:", { paymentId, url: action.url });
+    // Prevent duplicate settlement attempts
+    if (processingPaymentsRef.current.has(paymentId)) {
+      console.warn("[ChatInterface] Payment already being processed, skipping duplicate:", paymentId);
+      return;
+    }
+    processingPaymentsRef.current.add(paymentId);
+
+    console.log("[ChatInterface] Retrying action with signature:", {
+      paymentId,
+      url: action.url,
+      envelopeNetwork: envelope.network,
+      envelopeFrom: envelope.authorization?.from,
+      envelopeNonce: envelope.authorization?.nonce,
+    });
 
     // Add signature to headers (x402 v2: PAYMENT-SIGNATURE)
+    const paymentPayload = {
+      x402Version: 2,
+      scheme: "exact",
+      network: envelope.network,
+      payload: envelope
+    };
+    console.log("[ChatInterface] Payment payload:", JSON.stringify(paymentPayload, null, 2));
+
     const headers = {
       ...action.headers,
-      "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify({
-        x402Version: 2,
-        scheme: "exact",
-        network: envelope.network,
-        payload: envelope
-      })).toString("base64")
+      "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify(paymentPayload)).toString("base64")
     };
 
     try {
@@ -88,18 +107,52 @@ export function ChatInterface({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || data.message || "Retry failed");
+        // Include detailed reason if available (x402 middleware returns reason + details)
+        const errorMsg = data.reason || data.details || data.error || data.message || "Retry failed";
+        throw new Error(errorMsg);
       }
 
       // Success! Update messages
       // Remove payment request message
       setMessages((prev) => prev.filter(m => !m.paymentRequest || m.paymentRequest.paymentId !== paymentId));
 
+      // Determine the response content based on endpoint type
+      let responseContent = "Success!";
+      let attachmentPreview: string | undefined;
+      let attachmentType: "image" | "audio" | undefined;
+
+      // Handle image generation response (data.data contains { url?, base64?, revisedPrompt? })
+      if (data.data?.base64) {
+        // Image with base64 data
+        attachmentPreview = `data:image/png;base64,${data.data.base64}`;
+        attachmentType = "image";
+        responseContent = data.data.revisedPrompt
+          ? `Here's your generated image! (Prompt: ${data.data.revisedPrompt})`
+          : "Here's your generated image!";
+      } else if (data.data?.url) {
+        // Image with URL
+        attachmentPreview = data.data.url;
+        attachmentType = "image";
+        responseContent = data.data.revisedPrompt
+          ? `Here's your generated image! (Prompt: ${data.data.revisedPrompt})`
+          : "Here's your generated image!";
+      } else if (data.data?.audio || data.audioUrl) {
+        // Audio response (TTS)
+        attachmentPreview = data.data?.audio || data.audioUrl;
+        attachmentType = "audio";
+        responseContent = "Here's your synthesized audio!";
+      } else {
+        // Text responses (analysis, transcription, etc.)
+        responseContent = data.response || data.analysis || data.transcription || data.data?.text || "Success!";
+      }
+
       // Add assistant response
       const assistantMessage: Message = {
         role: "assistant",
-        content: data.response || data.analysis || data.transcription || "Success!",
+        content: responseContent,
         timestamp: new Date().toISOString(),
+        attachmentPreview,
+        attachmentType,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -128,6 +181,7 @@ export function ChatInterface({
 
       // Cleanup
       pendingActionsRef.current.delete(paymentId);
+      processingPaymentsRef.current.delete(paymentId);
 
     } catch (error) {
       console.error("Retry error:", error);
@@ -136,6 +190,8 @@ export function ChatInterface({
         content: `Retry failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         timestamp: new Date().toISOString()
       }]);
+      // Clean up processing state on error too
+      processingPaymentsRef.current.delete(paymentId);
     } finally {
       setLoading(false);
     }
