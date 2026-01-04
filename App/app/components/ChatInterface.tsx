@@ -50,6 +50,95 @@ export function ChatInterface({
   const [attachedPreview, setAttachedPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pending actions waiting for payment
+  const pendingActionsRef = useRef<Map<string, {
+    url: string;
+    method: string;
+    headers?: Record<string, string>;
+    body: any;
+    description: string;
+  }>>(new Map());
+
+  // Helper to retry pending action with signature
+  const retryPendingAction = async (paymentId: string, envelope: any) => {
+    const action = pendingActionsRef.current.get(paymentId);
+    if (!action) return;
+
+    console.log("[ChatInterface] Retrying action with signature:", { paymentId, url: action.url });
+
+    // Add signature to headers (x402 v2: PAYMENT-SIGNATURE)
+    const headers = {
+      ...action.headers,
+      "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify({
+        x402Version: 2,
+        scheme: "exact",
+        network: envelope.network,
+        payload: envelope
+      })).toString("base64")
+    };
+
+    try {
+      setLoading(true);
+      const response = await fetch(action.url, {
+        method: action.method,
+        headers,
+        body: action.body instanceof FormData ? action.body : JSON.stringify(action.body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.message || "Retry failed");
+      }
+
+      // Success! Update messages
+      // Remove payment request message
+      setMessages((prev) => prev.filter(m => !m.paymentRequest || m.paymentRequest.paymentId !== paymentId));
+
+      // Add assistant response
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: data.response || data.analysis || data.transcription || "Success!",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // Handle conversation updates if needed
+      if (data.conversationId) {
+        // We can't easily access currentConversationId here nicely if it's a closure, 
+        // but since this function is defined in the component scope, it should catch the latest state 
+        // IF we wrap it in a ref or use the setter callback properly.
+        // Actually, currentConversationId is state, so it's constant in this closure?? 
+        // No, this function is redefined on every render? No, I defined it as a const inside the component.
+        // So it closes over the scope. But if I don't use useCallback, it's recreated every render so it sees fresh state.
+
+        // However, updating state based on current state is safe.
+        // Updating currentConversationId:
+        setCurrentConversationId(prevId => {
+          if (!prevId) {
+            locallyCreatedConversationsRef.current.add(data.conversationId);
+            onConversationChange?.(data.conversationId, action.description);
+            return data.conversationId;
+          }
+          return prevId;
+        });
+      }
+
+      // Cleanup
+      pendingActionsRef.current.delete(paymentId);
+
+    } catch (error) {
+      console.error("Retry error:", error);
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: `Retry failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        timestamp: new Date().toISOString()
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Generate user-isolated conversation ID if not provided
   const generateConversationId = useCallback(() => {
     if (!account?.address) return null;
@@ -262,10 +351,46 @@ export function ChatInterface({
       }
 
       // Call chat API with audio URL
-      const response = await fetch("/api/chat/audio", {
+      const url = "/api/chat/audio";
+      const response = await fetch(url, {
         method: "POST",
         body: formData,
       });
+
+      // Handle x402 Payment Required
+      if (response.status === 402) {
+        const paymentHeader = response.headers.get("PAYMENT-REQUIRED");
+        if (paymentHeader) {
+          const decoded = atob(paymentHeader);
+          const parsed = JSON.parse(decoded);
+          const requirements = parsed.accepts[0];
+
+          const paymentId = `pay_${Date.now()}`;
+
+          // Store pending action
+          // NOTE: FormData bodies cannot be simply JSON.stringified and reused easily in all contexts,
+          // but assuming we're just retrying the same FormData it should be fine if we store it.
+          // However, fetch body with FormData doesn't need Content-Type header (browser sets it with boundary).
+          pendingActionsRef.current.set(paymentId, {
+            url,
+            method: "POST",
+            body: formData, // Store FormData directly
+            description: "Audio Transcription"
+          });
+
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: "Payment required for audio transcription.",
+            timestamp: new Date().toISOString(),
+            paymentRequest: {
+              ...requirements,
+              paymentId,
+              endpoint: url
+            }
+          }]);
+          return;
+        }
+      }
 
       const data = await response.json();
 
@@ -389,42 +514,73 @@ export function ChatInterface({
     try {
       let response;
       let data;
+      let url = "";
+      let body: any;
+      let method = "POST";
+      let headers: Record<string, string> = { "Content-Type": "application/json" };
 
       if (fileToSend) {
         // Upload file first
         const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
         const imageUrl = await uploadFile(fileToSend, conversationIdForUpload);
 
-        // Send with image URL via JSON
-        response = await fetch("/api/chat/image", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            walletAddress: account.address,
-            conversationId: conversationIdForUpload,
-            message: messageText || "Analyze this image",
-            imageUrl: imageUrl,
-            projectId: projectId || null
-          }),
-        });
+        url = "/api/chat/image";
+        body = {
+          walletAddress: account.address,
+          conversationId: conversationIdForUpload,
+          message: messageText || "Analyze this image",
+          imageUrl: imageUrl,
+          projectId: projectId || null
+        };
+        // fetch call below will use url/body
       } else {
-        // Send text-only message
-        const requestBody = {
+        url = "/api/chat";
+        body = {
           message: messageText,
           conversationId: currentConversationId,
           walletAddress: account.address,
           projectId: projectId || null,
         };
+      }
 
-        response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
+      response = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      // Handle x402 Payment Required
+      if (response.status === 402) {
+        const paymentHeader = response.headers.get("PAYMENT-REQUIRED");
+        if (paymentHeader) {
+          const decoded = atob(paymentHeader);
+          const parsed = JSON.parse(decoded);
+          const requirements = parsed.accepts[0]; // Take first acceptance criteria
+
+          const paymentId = `pay_${Date.now()}`;
+
+          // Store pending action
+          pendingActionsRef.current.set(paymentId, {
+            url,
+            method,
+            headers,
+            body,
+            description: messageText || "Image Analysis"
+          });
+
+          // Add system message with payment button
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: "Payment required for this request.",
+            timestamp: new Date().toISOString(),
+            paymentRequest: {
+              ...requirements,
+              paymentId,
+              endpoint: url
+            }
+          }]);
+          return;
+        }
       }
 
       data = await response.json();
@@ -696,7 +852,13 @@ export function ChatInterface({
                     <PaymentButton
                       requirements={message.paymentRequest}
                       onPaymentSigned={async (envelope) => {
-                        // Store signed envelope
+                        // Check if this is a chat retry action
+                        if (message.paymentRequest?.paymentId && pendingActionsRef.current.has(message.paymentRequest.paymentId)) {
+                          await retryPendingAction(message.paymentRequest.paymentId, envelope);
+                          return;
+                        }
+
+                        // Store signed envelope (Legacy Flow)
                         const storeResponse = await fetch("/api/payment/store", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -746,6 +908,7 @@ export function ChatInterface({
                     />
                   </div>
                 )}
+
               </div>
               <span className="text-[10px] text-muted-foreground mt-1 opacity-70 px-1">
                 {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

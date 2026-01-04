@@ -10,8 +10,23 @@ export const dynamic = "force-dynamic";
  * Transcribe audio and send to chat in one request
  * No x402 payment required for chat context (chat is free, only direct AI endpoints have payments)
  */
+import { verifyX402Payment } from "@/lib/middleware/x402";
+
+// ... existing imports ...
+
+/**
+ * POST /api/chat/audio
+ * Transcribe audio and send to chat in one request
+ * Requires x402 payment
+ */
 export async function POST(request: NextRequest) {
   try {
+    // 1. Verify Payment (x402)
+    const paymentResult = await verifyX402Payment(request, "POST /api/chat/audio");
+    if (!paymentResult.isValid) {
+      return paymentResult.response!;
+    }
+
     // Parse Form Data
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

@@ -150,4 +150,7 @@ export const paymentRoutes = {
   "/api/ai/docs/generate": aiServiceConfig.docsGeneratePriceUsd,
   "/api/ai/ocr": aiServiceConfig.ocrPriceUsd,
   "/api/ai/quiz/generate": aiServiceConfig.quizGeneratePriceUsd,
+  // Chat Integration
+  "/api/chat/image": aiServiceConfig.analyzePriceUsd,
+  "/api/chat/audio": aiServiceConfig.transcribePriceUsd,
 };

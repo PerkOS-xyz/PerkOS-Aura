@@ -22,8 +22,18 @@ const imageRequestSchema = z.object({
  * Analyze image and send to chat with optional message
  * No x402 payment required for chat context (chat is free, only direct AI endpoints have payments)
  */
+import { verifyX402Payment } from "@/lib/middleware/x402";
+
+// ... existing imports ...
+
 export async function POST(request: NextRequest) {
   try {
+    // 1. Verify Payment (x402)
+    const paymentResult = await verifyX402Payment(request, "POST /api/chat/image");
+    if (!paymentResult.isValid) {
+      return paymentResult.response!;
+    }
+
     // Parse and validate request body
     const body = await request.json();
     const validatedData = imageRequestSchema.parse(body);
