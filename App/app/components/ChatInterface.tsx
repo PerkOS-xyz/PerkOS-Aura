@@ -186,16 +186,24 @@ export function ChatInterface({
         // Mark this conversation as already in the sidebar (came from props)
         notifiedConversationsRef.current.add(initialConversationId);
 
-        // Always load from server when conversationId prop changes (user clicked on conversation in list)
-        // This ensures we get the latest messages even if we created it locally
-        console.log("[ChatInterface] Loading conversation from server:", initialConversationId);
-        // Clear existing messages first to show loading state
-        setMessages([]);
-        setCurrentConversationId(initialConversationId);
-        // Remove from locallyCreated set since we're loading from server
-        locallyCreatedConversationsRef.current.delete(initialConversationId);
-        loadConversationHistory(initialConversationId);
-        hasHadConversationRef.current = true;
+        // Check if this is a conversation we just created locally
+        // If so, don't reload from server - we have the messages with paymentRequest locally
+        const isLocallyCreated = locallyCreatedConversationsRef.current.has(initialConversationId);
+
+        if (isLocallyCreated) {
+          console.log("[ChatInterface] Skipping server reload - conversation was locally created:", initialConversationId);
+          // Just update the current conversation ID, keep existing messages
+          setCurrentConversationId(initialConversationId);
+          hasHadConversationRef.current = true;
+        } else {
+          // Load from server when user clicked on an existing conversation
+          console.log("[ChatInterface] Loading conversation from server:", initialConversationId);
+          // Clear existing messages first to show loading state
+          setMessages([]);
+          setCurrentConversationId(initialConversationId);
+          loadConversationHistory(initialConversationId);
+          hasHadConversationRef.current = true;
+        }
       } else if (previousId !== undefined) {
         // New conversation requested (user clicked "New Chat")
         // Only clear if we previously had a conversation selected
@@ -647,18 +655,43 @@ export function ChatInterface({
 
       // Check if response contains payment request (JSON format)
       try {
-        const paymentMatch = data.response.match(/```json\n([\s\S]*?)\n```/);
+        // More flexible regex: handles optional whitespace, different newline patterns
+        // Matches: ```json followed by JSON content and closing ```
+        const paymentMatch = data.response.match(/```json\s*([\s\S]*?)\s*```/);
+        console.log("[ChatInterface] Payment JSON match:", {
+          hasMatch: !!paymentMatch,
+          rawResponse: data.response?.substring(0, 200),
+        });
+
         if (paymentMatch) {
           const jsonContent = paymentMatch[1].trim();
+          console.log("[ChatInterface] Parsing JSON content:", jsonContent.substring(0, 200));
           const paymentData = JSON.parse(jsonContent);
 
           if (paymentData.paymentRequest) {
-            paymentRequest = paymentData.paymentRequest;
-            responseContent = data.response.replace(/```json\n[\s\S]*?\n```/g, "").trim();
+            const pr = paymentData.paymentRequest;
+            console.log("[ChatInterface] Found paymentRequest:", pr);
+
+            // Store the pending action so we can execute it after payment
+            if (pr.paymentId && pr.endpoint && pr.requestData) {
+              pendingActionsRef.current.set(pr.paymentId, {
+                url: pr.endpoint,
+                method: pr.method || "POST",
+                headers: { "Content-Type": "application/json" },
+                body: pr.requestData,
+                description: pr.description || "AI Service Request",
+              });
+              console.log("[ChatInterface] Stored pending action for paymentId:", pr.paymentId);
+            }
+
+            paymentRequest = pr;
+            // Remove the JSON block from response content
+            responseContent = data.response.replace(/```json\s*[\s\S]*?\s*```/g, "").trim();
           }
         }
-      } catch {
-        // Not a payment request
+      } catch (parseError) {
+        // Not a payment request or invalid JSON
+        console.log("[ChatInterface] Payment JSON parse failed:", parseError);
       }
 
       // Add assistant response

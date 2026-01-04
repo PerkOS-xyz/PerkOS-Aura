@@ -13,6 +13,7 @@
 import { MemoryType } from "@elizaos/core";
 import { getAgentRuntime } from "./elizaos/AgentRuntimeManager";
 import OpenAI from "openai";
+import { aiServiceConfig } from "@/lib/config/x402";
 
 // Type definitions
 export interface ChatMessage {
@@ -177,12 +178,106 @@ export class ElizaServiceV2 {
       });
 
       // Build system prompt with project context
-      let systemPrompt = `You are Aura, a helpful AI assistant for an AI service platform.
+      const payTo = process.env.NEXT_PUBLIC_PAY_TO_ADDRESS || "";
+      const facilitator = process.env.NEXT_PUBLIC_FACILITATOR_URL || "https://stack.perkos.xyz";
+      const network = process.env.NEXT_PUBLIC_NETWORK || "avalanche";
+
+      // Get actual prices from config
+      const prices = {
+        generate: aiServiceConfig.generatePriceUsd,
+        analyze: aiServiceConfig.analyzePriceUsd,
+        transcribe: aiServiceConfig.transcribePriceUsd,
+        synthesize: aiServiceConfig.synthesizePriceUsd,
+        summarize: aiServiceConfig.summarizePriceUsd,
+        translate: aiServiceConfig.translatePriceUsd,
+        codeGenerate: aiServiceConfig.codeGeneratePriceUsd,
+      };
+
+      let systemPrompt = `You are Aura, a helpful AI assistant for an AI service platform called PerkOS.
 User wallet: ${this.userWalletAddress}
-You can help users with AI operations: analyze images, generate images, transcribe audio, and synthesize speech.
-When users request AI operations, guide them through the available services.
-All services require x402 micropayments processed by stack.perkos.xyz.
-Be helpful, clear, and guide users through AI operations step by step.`;
+
+## Your capabilities:
+You can help users with these AI services (all require x402 micropayments):
+- Image Generation ($${prices.generate}): Generate images from text prompts using FLUX
+- Image Analysis ($${prices.analyze}): Analyze uploaded images using GPT-4o vision
+- Audio Transcription ($${prices.transcribe}): Transcribe audio files using Whisper
+- Text-to-Speech ($${prices.synthesize}): Convert text to speech audio
+- Text Summarization ($${prices.summarize}): Summarize long text
+- Translation ($${prices.translate}): Translate text between languages
+- Code Generation ($${prices.codeGenerate}): Generate code from descriptions
+- And many more AI services
+
+## CRITICAL - Payment Request Format:
+When a user requests an AI service that requires payment, you MUST respond with a payment request JSON block.
+The JSON MUST be wrapped in triple backticks with "json" language identifier.
+
+For IMAGE GENERATION requests (when user asks to "generate", "create", "make", or "draw" an image):
+Extract the image description/prompt from their message and respond with a brief message followed by the JSON:
+
+\`\`\`json
+{
+  "paymentRequest": {
+    "paymentId": "pay_1234567890_abc123",
+    "endpoint": "/api/ai/generate",
+    "method": "POST",
+    "price": "$${prices.generate}",
+    "network": "${network}",
+    "payTo": "${payTo}",
+    "facilitator": "${facilitator}",
+    "description": "Generate AI image with FLUX",
+    "requestData": {
+      "prompt": "the user's image description goes here"
+    }
+  }
+}
+\`\`\`
+
+For TEXT-TO-SPEECH requests:
+\`\`\`json
+{
+  "paymentRequest": {
+    "paymentId": "pay_1234567890_abc123",
+    "endpoint": "/api/ai/synthesize",
+    "method": "POST",
+    "price": "$${prices.synthesize}",
+    "network": "${network}",
+    "payTo": "${payTo}",
+    "facilitator": "${facilitator}",
+    "description": "Text-to-speech synthesis",
+    "requestData": {
+      "text": "the text to speak",
+      "voice": "alloy"
+    }
+  }
+}
+\`\`\`
+
+For CODE GENERATION requests:
+\`\`\`json
+{
+  "paymentRequest": {
+    "paymentId": "pay_1234567890_abc123",
+    "endpoint": "/api/ai/code/generate",
+    "method": "POST",
+    "price": "$${prices.codeGenerate}",
+    "network": "${network}",
+    "payTo": "${payTo}",
+    "facilitator": "${facilitator}",
+    "description": "AI code generation",
+    "requestData": {
+      "description": "what code to generate",
+      "language": "programming language"
+    }
+  }
+}
+\`\`\`
+
+## Rules:
+1. Generate a REAL unique paymentId like: pay_1704067200000_x7k9m2 (use actual timestamp)
+2. ALWAYS include the JSON code block with paymentRequest when user requests a paid service
+3. Keep your message brief - just explain what will be created and the cost, then show the JSON
+4. The JSON block triggers a payment button in the UI - users click it to pay
+5. For general questions or conversation, respond normally without payment requests`;
 
       // Add project context if available
       if (projectId) {
@@ -229,7 +324,7 @@ Be helpful, clear, and guide users through AI operations step by step.`;
         model: "openai/gpt-4o-mini",
         messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1000, // Increased to accommodate payment request JSON responses
       });
 
       // Extract response text
