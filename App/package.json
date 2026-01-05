@@ -30,6 +30,7 @@
     "@coinbase/x402": "^0.6.5",
     "@elizaos/core": "^1.7.0",
     "@modelcontextprotocol/sdk": "^1.18.2",
+    "@opentelemetry/api": "^1.9.0",
     "@perkos/middleware-x402": "^1.0.0",
     "@perkos/schema-validation": "^1.0.0",
     "@perkos/service-ai": "^1.0.0",
