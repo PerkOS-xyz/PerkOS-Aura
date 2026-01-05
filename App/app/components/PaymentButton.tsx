@@ -98,7 +98,7 @@ export function PaymentButton({
       const validBefore = BigInt(now + 3600);
 
       const authorization = {
-        from: account.address,
+        from: account.address as `0x${string}`,
         to: requirements.payTo as `0x${string}`,
         value: amountInUSDC,
         validAfter,
