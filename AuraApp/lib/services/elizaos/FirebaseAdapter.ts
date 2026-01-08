@@ -11,8 +11,19 @@
  */
 
 import { getFirestoreInstance, getConversationMessagesPath, getUserCollectionPath, COLLECTIONS } from "@/lib/db/firebase";
-import type { Memory, Entity, Relationship } from "@elizaos/core";
 import { FieldValue } from "firebase-admin/firestore";
+
+// Types - using local definitions due to @elizaos/core TypeScript export issues
+type Memory = {
+  id?: string;
+  content: any;
+  roomId?: string;
+  userId?: string;
+  agentId?: string;
+  createdAt?: Date | number;
+};
+type Entity = any;
+type Relationship = any;
 
 // Fact interface for knowledge storage
 export interface Fact {

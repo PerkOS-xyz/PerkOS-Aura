@@ -5,7 +5,8 @@
  * Reference: https://docs.elizaos.ai/agents/character
  */
 
-import type { Character } from "@elizaos/core";
+// Character type - using any due to @elizaos/core TypeScript export issues
+type Character = any;
 
 export function createAIServiceCharacter(userWalletAddress: string): Character {
   return {
