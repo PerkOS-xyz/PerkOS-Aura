@@ -5,21 +5,27 @@
  * Reference: https://docs.elizaos.ai/runtime/core
  */
 
-import { AgentRuntime, MemoryType } from "@elizaos/core";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const elizaCore = require("@elizaos/core");
+const AgentRuntime = elizaCore.AgentRuntime as new (config: any) => any;
+
 import { FirebaseAdapter } from "./FirebaseAdapter";
 import { createAIServiceCharacter } from "./character";
 import { aiActions } from "./actions";
 
+// Type alias for AgentRuntime since @elizaos/core has broken TypeScript exports
+type AgentRuntimeInstance = InstanceType<typeof AgentRuntime>;
+
 /**
  * Per-user AgentRuntime instances cache
  */
-const runtimeInstances = new Map<string, AgentRuntime>();
+const runtimeInstances = new Map<string, AgentRuntimeInstance>();
 
 /**
  * Get or create AgentRuntime instance for a user
  * Each user gets their own isolated runtime with separate memory
  */
-export async function getAgentRuntime(userWalletAddress: string): Promise<AgentRuntime> {
+export async function getAgentRuntime(userWalletAddress: string): Promise<AgentRuntimeInstance> {
   const key = userWalletAddress.toLowerCase();
 
   // Return existing instance if available

@@ -76,7 +76,6 @@ export async function POST(request: NextRequest) {
     // 2. Store the interaction in conversation history
     // We don't send to Eliza for another response - the image analysis IS the response
     const { getAgentRuntime } = await import("@/lib/services/elizaos/AgentRuntimeManager");
-    const { MemoryType } = await import("@elizaos/core");
 
     const runtime = await getAgentRuntime(walletAddress);
     const adapter = (runtime as any).adapter;
@@ -94,7 +93,6 @@ export async function POST(request: NextRequest) {
     if (adapter) {
       // Store user's image share message with attachment URL
       await adapter.createMemory({
-        type: MemoryType.MESSAGE,
         content: {
           text: userMessageForHistory,
           attachmentUrl: imageToAnalyze, // Store the image URL for history
@@ -122,7 +120,6 @@ export async function POST(request: NextRequest) {
 
       // Store the analysis as assistant response (with transaction info for paid badge)
       await adapter.createMemory({
-        type: MemoryType.MESSAGE,
         content: {
           text: assistantResponse,
           transactionHash,

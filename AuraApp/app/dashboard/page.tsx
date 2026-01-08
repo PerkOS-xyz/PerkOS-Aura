@@ -70,6 +70,9 @@ export default function DashboardPage() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [loadingConversations, setLoadingConversations] = useState(false);
 
+  // Track recently deleted conversations to prevent race conditions
+  const recentlyDeletedRef = useRef<Set<string>>(new Set());
+
   // UI state
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -121,7 +124,7 @@ export default function DashboardPage() {
       }
 
       console.log("[Dashboard] Fetching conversations from:", url);
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         const fetchedConversations = data.conversations || [];
@@ -150,16 +153,21 @@ export default function DashboardPage() {
             // Combine: fetched conversations first, then optimistic-only ones
             // Also deduplicate the combined result
             const combined = [...uniqueConversations, ...optimisticOnly];
-            return combined.reduce((acc: Conversation[], curr: Conversation) => {
-              if (!acc.find((c) => c.conversation_id === curr.conversation_id)) {
-                acc.push(curr);
-              }
-              return acc;
-            }, [] as Conversation[]);
+            // Filter out recently deleted conversations to prevent race conditions
+            return combined
+              .filter((c) => !recentlyDeletedRef.current.has(c.conversation_id))
+              .reduce((acc: Conversation[], curr: Conversation) => {
+                if (!acc.find((c) => c.conversation_id === curr.conversation_id)) {
+                  acc.push(curr);
+                }
+                return acc;
+              }, [] as Conversation[]);
           });
         } else {
-          // Replace entirely (normal refresh)
-          setConversations(uniqueConversations);
+          // Replace entirely (normal refresh) - still filter out recently deleted
+          setConversations(
+            uniqueConversations.filter((c: Conversation) => !recentlyDeletedRef.current.has(c.conversation_id))
+          );
         }
       }
     } catch (error) {
@@ -333,6 +341,9 @@ export default function DashboardPage() {
         const data = await response.json();
         console.log("[Dashboard] Delete response:", data);
 
+        // Track deleted conversation to prevent race conditions with optimistic refreshes
+        recentlyDeletedRef.current.add(deleteId);
+
         // Remove from UI immediately (optimistic update)
         // Always remove from UI, even if deletedCount is 0
         // The server refresh will confirm if it's really gone
@@ -351,6 +362,12 @@ export default function DashboardPage() {
         setTimeout(() => {
           fetchConversations(false); // Normal refresh after deletion
         }, 1000);
+
+        // Clean up the recently deleted tracking after 5 seconds
+        // This prevents memory leaks while ensuring race conditions are handled
+        setTimeout(() => {
+          recentlyDeletedRef.current.delete(deleteId);
+        }, 5000);
       } else {
         const errorData = await response.json();
         const errorMessage = errorData.message || errorData.error || "Failed to delete conversation";

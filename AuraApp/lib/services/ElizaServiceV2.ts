@@ -10,7 +10,6 @@
  * Reference: https://docs.elizaos.ai/runtime/core
  */
 
-import { MemoryType } from "@elizaos/core";
 import { getAgentRuntime } from "./elizaos/AgentRuntimeManager";
 import OpenAI from "openai";
 import { aiServiceConfig } from "@/lib/config/x402";
@@ -101,7 +100,6 @@ export class ElizaServiceV2 {
 
       // Create memory for user message
       const userMemory = {
-        type: MemoryType.MESSAGE,
         content: { text: request.message },
         roomId: conversationId,
         userId: this.userWalletAddress,
@@ -128,7 +126,6 @@ export class ElizaServiceV2 {
         projectId,
       });
       await adapter.createMemory({
-        type: MemoryType.MESSAGE,
         content: { text: responseText },
         roomId: conversationId,
         agentId: runtime.agentId,
@@ -530,7 +527,6 @@ For CODE GENERATION requests:
         agentId: `agent_${this.userWalletAddress}`,
         roomId: conversationId,
         content,
-        type: MemoryType.MESSAGE,
         createdAt: Date.now(),
       };
 
