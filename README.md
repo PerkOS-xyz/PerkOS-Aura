@@ -54,6 +54,124 @@
 - ✅ **Multi-Chain Support** - Avalanche, Base, Celo
 - ✅ **Type-Safe** - Full TypeScript implementation
 
+## 🏗️ Architecture
+
+### System Overview
+
+```mermaid
+graph TB
+    subgraph Client["Client Layer"]
+        UI[React Dashboard]
+        Wallet[Thirdweb Wallet]
+    end
+
+    subgraph Aura["Aura Service"]
+        Next[Next.js 15 App]
+        Chat[Chat API]
+        AI[AI Endpoints x20]
+        X402[x402 Middleware]
+        Eliza[ElizaOS Runtime]
+    end
+
+    subgraph External["External Services"]
+        OpenRouter[OpenRouter API]
+        Replicate[Replicate API]
+        Firebase[Firebase/Firestore]
+        Facilitator[PerkOS-Stack Facilitator]
+    end
+
+    UI --> Next
+    Wallet --> X402
+    Next --> Chat
+    Next --> AI
+    Chat --> Eliza
+    Eliza --> Firebase
+    AI --> OpenRouter
+    AI --> Replicate
+    X402 --> Facilitator
+```
+
+### x402 Payment Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant Aura
+    participant Facilitator
+    participant Blockchain
+
+    User->>Client: Request AI Service
+    Client->>Aura: POST /api/chat/image (no payment)
+    Aura->>Client: 402 + PAYMENT-REQUIRED header
+    Note over Client: Decode header, extract tokenName
+    Client->>User: Show PaymentButton
+    User->>Client: Sign EIP-712 payment
+    Client->>Aura: POST + PAYMENT-SIGNATURE header
+    Aura->>Facilitator: Verify payment
+    Facilitator->>Aura: Valid
+    Aura->>Aura: Execute AI operation
+    Aura->>Facilitator: Settle payment
+    Facilitator->>Blockchain: Submit transaction
+    Blockchain->>Facilitator: Transaction hash
+    Facilitator->>Aura: Settlement confirmed
+    Aura->>Client: Response + PAYMENT-RESPONSE header
+    Note over Client: Display "Paid" badge with tx link
+```
+
+### ElizaOS Chat Architecture
+
+```mermaid
+graph LR
+    subgraph Dashboard
+        ChatUI[ChatInterface.tsx]
+        Projects[Project Sidebar]
+    end
+
+    subgraph API["API Layer"]
+        ChatAPI[/api/chat]
+        ImageAPI[/api/chat/image]
+        ConvAPI[/api/conversations]
+    end
+
+    subgraph ElizaOS["ElizaOS Layer"]
+        Runtime[AgentRuntime]
+        Character[Character Config]
+        Actions[AI Actions]
+    end
+
+    subgraph Storage["Storage Layer"]
+        Adapter[FirebaseAdapter]
+        Firestore[(Firestore)]
+    end
+
+    ChatUI --> ChatAPI
+    ChatUI --> ImageAPI
+    Projects --> ConvAPI
+    ChatAPI --> Runtime
+    ImageAPI --> Adapter
+    Runtime --> Character
+    Runtime --> Actions
+    Runtime --> Adapter
+    Adapter --> Firestore
+```
+
+### Token Detection for EIP-712 Signatures
+
+```mermaid
+flowchart TD
+    A[Client receives 402] --> B[Decode PAYMENT-REQUIRED header]
+    B --> C[Extract tokenName from accepts.extra.name]
+    C --> D[Create EIP-712 domain with tokenName]
+    D --> E[User signs payment]
+    E --> F[Server receives signature]
+    F --> G[detectTokenInfo from contract RPC]
+    G --> H{Token names match?}
+    H -->|Yes| I[Verify & Settle Payment]
+    H -->|No| J[Signature Invalid Error]
+    I --> K[Return PAYMENT-RESPONSE]
+```
+
 ## 📋 Prerequisites
 
 - **Node.js** 18+ and npm
@@ -67,8 +185,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/PerkOS-xyz/PerkOS-Vendor-Service-AI.git
-cd PerkOS-Vendor-Service-AI/App
+git clone https://github.com/PerkOS-xyz/PerkOS-Aura.git
+cd PerkOS-Aura/AuraApp
 
 # Install dependencies
 npm install
@@ -86,7 +204,7 @@ Visit `http://localhost:3000`
 
 ### Required Environment Variables
 
-Create `.env.local` in the `App` directory:
+Create `.env.local` in the `AuraApp` directory:
 
 ```bash
 # AI Providers (Required)
@@ -126,7 +244,7 @@ ADMIN_WALLETS=0x...
 ### 1. Local Development
 
 ```bash
-cd App
+cd AuraApp
 npm run dev
 ```
 
@@ -147,8 +265,7 @@ All endpoints require x402 v2 payment headers:
 ```http
 POST /api/ai/{service}
 Content-Type: application/json
-x-authorization: {"from":"0x...","to":"0x...","amount":"1000",...}
-x-signature: 0x...
+PAYMENT-SIGNATURE: base64-encoded-envelope
 
 {
   "param1": "value1",
@@ -161,8 +278,7 @@ x-signature: 0x...
 ```bash
 curl -X POST http://localhost:3000/api/ai/analyze \
   -H "Content-Type: application/json" \
-  -H "x-authorization: {...}" \
-  -H "x-signature: 0x..." \
+  -H "PAYMENT-SIGNATURE: ..." \
   -d '{
     "image": "data:image/jpeg;base64,...",
     "prompt": "Describe this image"
@@ -239,8 +355,8 @@ npm start
 ## 🏗️ Project Structure
 
 ```
-PerkOS-Vendor-Service-AI/
-├── App/
+PerkOS-Aura/
+├── AuraApp/
 │   ├── app/
 │   │   ├── admin/              # Admin dashboard
 │   │   ├── api/
@@ -260,7 +376,8 @@ PerkOS-Vendor-Service-AI/
 │   │   │   └── elizaos/        # ElizaOS integration (AgentRuntime, FirebaseAdapter)
 │   │   ├── middleware/         # x402 middleware
 │   │   └── utils/              # Utilities
-│   └── package.json
+│   ├── next.config.mjs         # Next.js config with TypeScript fixes
+│   └── tsconfig.json           # TypeScript config with third-party workarounds
 ├── CLAUDE.md                   # AI assistant integration guide
 └── README.md
 ```
@@ -317,6 +434,22 @@ npm run test:ai
 npm run test:payment
 ```
 
+### Build Configuration
+
+The project includes workarounds for third-party TypeScript issues:
+
+**next.config.mjs**:
+- `ignoreBuildErrors: true` - Ignores `@noble/curves` type errors (broken upstream exports)
+
+**tsconfig.json**:
+- `allowImportingTsExtensions: true` - Required for `@noble/curves` imports
+- Excludes `node_modules/@noble/curves` from type checking
+
+**ElizaOS Integration**:
+- Uses `require("@elizaos/core")` pattern due to broken ESM exports
+- Local type definitions for `Memory`, `Entity`, `Relationship`, `Character`
+- FirebaseAdapter implements custom persistence (not SupabaseAdapter)
+
 ## 🔐 Security
 
 - ✅ Environment variables for secrets
@@ -325,6 +458,28 @@ npm run test:payment
 - ✅ Admin wallet authentication
 - ✅ CORS configuration
 - ✅ Rate limiting (recommended for production)
+
+## 🆕 Recent Improvements
+
+### Conversation Delete Fix
+- Fixed race condition where deleted conversations would reappear
+- Added `recentlyDeletedRef` to track and filter deleted items
+- Added `{ cache: "no-store" }` to prevent browser fetch caching
+
+### ElizaOS Integration Fixes
+- Fixed `@elizaos/core` import issues with `require()` pattern
+- Added local type definitions for broken TypeScript exports
+- Removed unused `MemoryType` references
+
+### Build Configuration
+- Added `ignoreBuildErrors: true` for third-party type issues
+- Added `allowImportingTsExtensions: true` for `@noble/curves`
+- Properly excludes problematic node_modules from type checking
+
+### x402 v2 Payment Flow
+- EIP-712 domain token name detection from on-chain contracts
+- Transaction hash persistence for "Paid" badge display
+- Proper PAYMENT-RESPONSE header handling
 
 ## 🤝 Contributing
 
@@ -340,15 +495,15 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/PerkOS-xyz/PerkOS-Vendor-Service-AI
+- **GitHub**: https://github.com/PerkOS-xyz/PerkOS-Aura
 - **PerkOS Stack**: https://github.com/PerkOS-xyz/PerkOS-Stack
 - **x402 Protocol**: https://github.com/coinbase/x402
 - **Documentation**: http://localhost:3000/docs
 
 ## 💡 Support
 
-- Issues: [GitHub Issues](https://github.com/PerkOS-xyz/PerkOS-Vendor-Service-AI/issues)
-- Discussions: [GitHub Discussions](https://github.com/PerkOS-xyz/PerkOS-Vendor-Service-AI/discussions)
+- Issues: [GitHub Issues](https://github.com/PerkOS-xyz/PerkOS-Aura/issues)
+- Discussions: [GitHub Discussions](https://github.com/PerkOS-xyz/PerkOS-Aura/discussions)
 
 ## 🙏 Acknowledgments
 
