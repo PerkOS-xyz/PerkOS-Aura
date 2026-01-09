@@ -7,12 +7,14 @@
 ### 20 AI Service Endpoints
 
 **Vision & Audio (4)**
+
 - 🖼️ Image Analysis - GPT-4o vision analysis ($0.05)
 - 🎨 Image Generation - DALL-E 3 creation ($0.15)
 - 🎤 Audio Transcription - Whisper transcription ($0.04)
 - 🔊 Text-to-Speech - Natural voice synthesis ($0.04)
 
 **NLP Services (6)**
+
 - 📝 Text Summarization ($0.03)
 - 🌐 Translation - 50+ languages ($0.03)
 - 😊 Sentiment Analysis ($0.02)
@@ -20,12 +22,14 @@
 - ✨ Text Simplification ($0.02)
 - 🏷️ Entity Extraction ($0.03)
 
-**Business Tools (3)**  
+**Business Tools (3)**
+
 - ✉️ Email Generation ($0.02)
 - 📦 Product Descriptions ($0.03)
 - 🔍 SEO Optimization ($0.05)
 
 **Developer Tools (5)**
+
 - 💻 Code Generation ($0.08)
 - 🔎 Code Review ($0.05)
 - 🗄️ SQL Query Generation ($0.03)
@@ -33,10 +37,12 @@
 - 📚 API Documentation ($0.05)
 
 **Advanced (2)**
+
 - 📄 OCR Text Extraction ($0.04)
 - 📝 Quiz Generator ($0.05)
 
 ### Core Features
+
 - ✅ **x402 v2 Payment Integration** - Gasless crypto micropayments with transaction tracking
 - ✅ **AI Chat Interface** - Conversational AI with ElizaOS runtime and persistent memory
 - ✅ **Image Analysis with Payment** - Upload images, pay via x402, get AI analysis with "Paid" badge
@@ -110,6 +116,7 @@ ADMIN_WALLETS=0x...
 ```
 
 ### Network Options
+
 - `avalanche` - Avalanche C-Chain (43114)
 - `base` - Base (8453)
 - `celo` - Celo (42220)
@@ -183,12 +190,14 @@ curl -X POST http://localhost:3000/api/ai/analyze \
 Access at `http://localhost:3000/admin`
 
 **Features:**
+
 - View registration status
 - Re-register services
-- Monitor facilitator health  
+- Monitor facilitator health
 - Service breakdown by category
 
 **Access Control:**
+
 - Set `ADMIN_WALLETS` in `.env.local`
 - Connect with authorized wallet
 - Admin menu appears automatically
@@ -198,6 +207,7 @@ Access at `http://localhost:3000/admin`
 Your service automatically appears in the PerkOS-Stack marketplace at `http://localhost:3005/marketplace` after registration.
 
 **Marketplace Features:**
+
 - Service discovery
 - Endpoint explorer
 - Pricing display
@@ -260,6 +270,7 @@ PerkOS-Vendor-Service-AI/
 The dashboard includes an AI chat interface with:
 
 ### Features
+
 - **Conversational AI**: ElizaOS-powered chat with GPT-4o-mini
 - **Image Analysis**: Upload images and get AI analysis (x402 paid)
 - **Image Generation**: Generate images from text prompts (x402 paid)
@@ -268,6 +279,7 @@ The dashboard includes an AI chat interface with:
 - **Payment Tracking**: "Paid" badge on paid service responses with transaction links
 
 ### Payment Flow for Image Analysis
+
 1. User uploads image in chat
 2. PaymentButton appears with price ($0.02)
 3. User signs x402 payment via wallet
@@ -276,6 +288,7 @@ The dashboard includes an AI chat interface with:
 6. "Paid" badge and "View on Explorer" link displayed
 
 ### API Endpoints
+
 - `POST /api/chat` - Send message, get AI response
 - `GET /api/chat` - Get conversation history
 - `POST /api/chat/image` - Analyze image with x402 payment
@@ -350,4 +363,3 @@ MIT License - see [LICENSE](LICENSE) file
 ---
 
 **Made with ❤️ by PerkOS Team**
-
