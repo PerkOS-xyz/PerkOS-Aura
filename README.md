@@ -129,9 +129,9 @@ graph LR
     end
 
     subgraph API["API Layer"]
-        ChatAPI[/api/chat]
-        ImageAPI[/api/chat/image]
-        ConvAPI[/api/conversations]
+        ChatAPI["api/chat"]
+        ImageAPI["api/chat/image"]
+        ConvAPI["api/conversations"]
     end
 
     subgraph ElizaOS["ElizaOS Layer"]
