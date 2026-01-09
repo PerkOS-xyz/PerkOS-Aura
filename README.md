@@ -439,13 +439,16 @@ npm run test:payment
 The project includes workarounds for third-party TypeScript issues:
 
 **next.config.mjs**:
+
 - `ignoreBuildErrors: true` - Ignores `@noble/curves` type errors (broken upstream exports)
 
 **tsconfig.json**:
+
 - `allowImportingTsExtensions: true` - Required for `@noble/curves` imports
 - Excludes `node_modules/@noble/curves` from type checking
 
 **ElizaOS Integration**:
+
 - Uses `require("@elizaos/core")` pattern due to broken ESM exports
 - Local type definitions for `Memory`, `Entity`, `Relationship`, `Character`
 - FirebaseAdapter implements custom persistence (not SupabaseAdapter)
@@ -462,21 +465,25 @@ The project includes workarounds for third-party TypeScript issues:
 ## 🆕 Recent Improvements
 
 ### Conversation Delete Fix
+
 - Fixed race condition where deleted conversations would reappear
 - Added `recentlyDeletedRef` to track and filter deleted items
 - Added `{ cache: "no-store" }` to prevent browser fetch caching
 
 ### ElizaOS Integration Fixes
+
 - Fixed `@elizaos/core` import issues with `require()` pattern
 - Added local type definitions for broken TypeScript exports
 - Removed unused `MemoryType` references
 
 ### Build Configuration
+
 - Added `ignoreBuildErrors: true` for third-party type issues
 - Added `allowImportingTsExtensions: true` for `@noble/curves`
 - Properly excludes problematic node_modules from type checking
 
 ### x402 v2 Payment Flow
+
 - EIP-712 domain token name detection from on-chain contracts
 - Transaction hash persistence for "Paid" badge display
 - Proper PAYMENT-RESPONSE header handling
