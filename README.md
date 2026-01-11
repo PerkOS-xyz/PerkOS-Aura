@@ -524,4 +524,4 @@ MIT License - see [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ by PerkOS Team**
+**Made with ❤️ by Aura Team**
