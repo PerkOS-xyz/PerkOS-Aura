@@ -4,9 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { x402Config, paymentRoutes } from "@/lib/config/x402";
-import { toCAIP2Network, parsePriceToUSDC, getUSDCAddress } from "@/lib/utils/x402-payment";
-import { detectTokenInfo } from "@/lib/utils/token-detection";
+import { x402Config, paymentRoutes, SUPPORTED_NETWORKS, usdcAddresses, getCAIP2Network, networkMappings } from "@/lib/config/x402";
+import { toCAIP2Network, parsePriceToUSDC, getDomainVersion, getTokenName } from "@/lib/utils/x402-payment";
 
 export interface PaymentEnvelope {
   network: string;
@@ -117,43 +116,36 @@ export async function verifyPayment(
     const routeConfig = {
       price: routePrice, // Store as number
       priceString: `$${routePrice}`, // Store as formatted string
-      network: x402Config.network,
       description: `Payment for ${route}`,
     };
 
-    // Verify network matches
-    // envelope.network is in legacy format (e.g., "avalanche")
-    // routeConfig.network is also in legacy format (e.g., "avalanche")
-    // But we need to handle CAIP-2 format if envelope somehow has it
+    // Verify network is in supported networks list
+    // envelope.network can be in legacy format (e.g., "avalanche") or CAIP-2 (e.g., "eip155:43114")
     const envelopeNetwork = envelope.network;
-    const expectedNetwork = routeConfig.network;
 
-    // Convert CAIP-2 to legacy if needed for comparison
-    const caip2ToLegacy: Record<string, string> = {
-      "eip155:43114": "avalanche",
-      "eip155:43113": "avalanche-fuji",
-      "eip155:8453": "base",
-      "eip155:84532": "base-sepolia",
-      "eip155:42220": "celo",
-      "eip155:11142220": "celo-sepolia",
-    };
+    // Build reverse mapping from CAIP-2 to legacy network names
+    const caip2ToLegacy: Record<string, string> = {};
+    for (const [legacy, caip2] of Object.entries(networkMappings)) {
+      caip2ToLegacy[caip2] = legacy;
+    }
 
+    // Normalize to legacy format for validation
     const normalizedEnvelopeNetwork = caip2ToLegacy[envelopeNetwork] || envelopeNetwork;
 
-    if (normalizedEnvelopeNetwork !== expectedNetwork) {
-      console.error("❌ Network mismatch:", {
+    // Check if the network is in our supported networks list
+    if (!SUPPORTED_NETWORKS.includes(normalizedEnvelopeNetwork as typeof SUPPORTED_NETWORKS[number])) {
+      console.error("❌ Unsupported network:", {
         envelopeNetwork,
         normalizedEnvelopeNetwork,
-        expectedNetwork,
-        routeConfig,
+        supportedNetworks: SUPPORTED_NETWORKS,
       });
       return {
         isValid: false,
-        invalidReason: `Network mismatch. Expected ${expectedNetwork}, got ${envelopeNetwork}`,
+        invalidReason: `Unsupported network: ${envelopeNetwork}. Supported: ${SUPPORTED_NETWORKS.join(", ")}`,
       };
     }
 
-    console.log("✅ Network matches:", { envelopeNetwork, expectedNetwork });
+    console.log("✅ Network supported:", { envelopeNetwork, normalizedEnvelopeNetwork });
 
     // Verify recipient address
     if (envelope.authorization.to.toLowerCase() !== x402Config.payTo.toLowerCase()) {
@@ -167,23 +159,22 @@ export async function verifyPayment(
     const verifyUrl = `${x402Config.facilitatorUrl}/api/v2/x402/verify`;
 
     // Parse price to atomic units (USDC has 6 decimals)
-    // expectedPrice is like "$0.001", we need "1000" (atomic units)
-    const expectedPrice = routeConfig.priceString;
-    const priceAmount = parsePriceToUSDC(expectedPrice);
+    const priceAmount = parsePriceToUSDC(routeConfig.priceString);
 
-    // Get USDC address for the network (use legacy format for lookup)
-    const usdcAddress = getUSDCAddress(routeConfig.network);
+    // Get USDC address for the payment network (user's selected network)
+    const usdcAddress = usdcAddresses[normalizedEnvelopeNetwork] || usdcAddresses["avalanche"];
 
-    // Detect actual token info from the contract (critical for EIP-712 domain matching)
-    const tokenInfo = await detectTokenInfo(usdcAddress, routeConfig.network);
-    const tokenName = tokenInfo?.name || "USD Coin";
-    const tokenVersion = "2"; // EIP-3009 version is always "2"
+    // Network-specific token name: Celo USDC returns "USDC", others return "USD Coin"
+    const tokenName = getTokenName(normalizedEnvelopeNetwork);
+    // Network-specific EIP-712 version: All Circle native USDC uses "2"
+    const tokenVersion = getDomainVersion(normalizedEnvelopeNetwork);
 
-    console.log("🔍 Token info for verification:", {
-      network: routeConfig.network,
+    console.log("🔍 Payment verification details:", {
+      paymentNetwork: normalizedEnvelopeNetwork,
       usdcAddress,
-      detectedName: tokenInfo?.name,
-      usingName: tokenName,
+      tokenName,
+      tokenVersion,
+      priceAmount: priceAmount.toString(),
     });
 
     let verifyResponse: Response;
@@ -197,7 +188,7 @@ export async function verifyPayment(
           x402Version: 2, // Use x402 V2 protocol
           paymentRequirements: {
             scheme: "exact", // Required: exact or deferred
-            network: toCAIP2Network(routeConfig.network), // V2 uses CAIP-2 format
+            network: getCAIP2Network(normalizedEnvelopeNetwork), // Use envelope's network in CAIP-2 format
             maxAmountRequired: priceAmount.toString(), // Atomic units as string (e.g., "1000" for $0.001)
             resource: route, // URL of resource (per x402 v2 spec)
             description: routeConfig.description || "Payment required",
@@ -278,19 +269,28 @@ export async function settlePayment(
   try {
     const settleUrl = `${x402Config.facilitatorUrl}/api/v2/x402/settle`;
 
-    // Get USDC address for the network (use legacy format for lookup)
-    const usdcAddress = getUSDCAddress(envelope.network);
+    // Build reverse mapping from CAIP-2 to legacy network names
+    const caip2ToLegacy: Record<string, string> = {};
+    for (const [legacy, caip2] of Object.entries(networkMappings)) {
+      caip2ToLegacy[caip2] = legacy;
+    }
 
-    // Detect actual token info from the contract (critical for EIP-712 domain matching)
-    const tokenInfo = await detectTokenInfo(usdcAddress, envelope.network);
-    const tokenName = tokenInfo?.name || "USD Coin";
-    const tokenVersion = "2"; // EIP-3009 version is always "2"
+    // Normalize envelope network to legacy format for USDC lookup
+    const normalizedNetwork = caip2ToLegacy[envelope.network] || envelope.network;
 
-    console.log("🔍 Token info for settlement:", {
-      network: envelope.network,
+    // Get USDC address for the payment network
+    const usdcAddress = usdcAddresses[normalizedNetwork] || usdcAddresses["avalanche"];
+
+    // Network-specific token name: Celo USDC returns "USDC", others return "USD Coin"
+    const tokenName = getTokenName(normalizedNetwork);
+    // Network-specific EIP-712 version: All Circle native USDC uses "2"
+    const tokenVersion = getDomainVersion(normalizedNetwork);
+
+    console.log("🔍 Payment settlement details:", {
+      network: normalizedNetwork,
       usdcAddress,
-      detectedName: tokenInfo?.name,
-      usingName: tokenName,
+      tokenName,
+      tokenVersion,
     });
 
     let settleResponse: Response;
@@ -412,11 +412,12 @@ export async function settlePayment(
  * Create 402 Payment Required response (x402 v2 compliant)
  * Per spec: https://www.x402.org/writing/x402-v2-launch
  * V2 uses PAYMENT-REQUIRED header and moves payment data to headers
+ * Returns all supported networks in accepts array for multi-chain support
  */
 export function create402Response(
   route: string,
   price: string,
-  network: string
+  _network?: string // Deprecated - we now return all supported networks
 ): NextResponse {
   // Extract just the path if route includes method prefix
   const routePath = route.includes(" ") ? route.split(" ")[1] : route;
@@ -427,40 +428,44 @@ export function create402Response(
     return NextResponse.json({ error: "Route not configured for payment" }, { status: 500 });
   }
 
-  const routeConfig = {
-    price: `$${routePrice}`,
-    network: network || x402Config.network,
-    description: `Payment required for ${routePath}`,
-  };
-
   // Parse price to atomic units (USDC has 6 decimals)
-  const priceAmount = parsePriceToUSDC(routeConfig.price);
-  const usdcAddress = getUSDCAddress(network);
+  const priceAmount = parsePriceToUSDC(`$${routePrice}`);
+  const description = `Payment required for ${routePath}`;
 
-  // Build payment requirements (x402 v2 format)
-  const paymentRequirements = {
-    scheme: "exact",
-    network: toCAIP2Network(network),
-    maxAmountRequired: priceAmount.toString(),
-    resource: routePath, // e.g., "/api/balance/check"
-    description: routeConfig.description || "Payment required for this resource",
-    mimeType: "application/json",
-    payTo: x402Config.payTo,
-    maxTimeoutSeconds: 30,
-    asset: usdcAddress,
-    extra: {
-      // Fallback to USDC - actual token info will be detected in payment requirements endpoint
-      name: "USD Coin",
-      version: "2"
-    }
-  };
+  // Build accepts array for all supported networks (multi-chain support)
+  const accepts = SUPPORTED_NETWORKS.map((network) => {
+    const usdcAddress = usdcAddresses[network];
+    const caip2Network = getCAIP2Network(network);
+    // Network-specific token name: Celo USDC returns "USDC", others return "USD Coin"
+    const tokenName = getTokenName(network);
+    // Network-specific EIP-712 version: All Circle native USDC uses "2"
+    const tokenVersion = getDomainVersion(network);
+
+    return {
+      scheme: "exact",
+      network: caip2Network,
+      maxAmountRequired: priceAmount.toString(),
+      resource: routePath,
+      description,
+      mimeType: "application/json",
+      payTo: x402Config.payTo,
+      maxTimeoutSeconds: 30,
+      asset: usdcAddress,
+      extra: {
+        name: tokenName,
+        version: tokenVersion,
+        networkName: network, // Legacy name for client convenience
+      },
+    };
+  });
 
   // V2: Set PAYMENT-REQUIRED header (base64-encoded JSON)
   // Per spec: "Moving all payment data to headers for the HTTP transport"
   const paymentRequiredHeader = Buffer.from(
     JSON.stringify({
       x402Version: 2,
-      accepts: [paymentRequirements]
+      accepts,
+      defaultNetwork: x402Config.network, // Hint for default selection
     })
   ).toString("base64");
 

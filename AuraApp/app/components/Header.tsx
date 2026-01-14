@@ -6,11 +6,12 @@ import { usePathname } from "next/navigation";
 import { ConnectButton, useActiveAccount, useActiveWalletChain } from "thirdweb/react";
 import { createWallet } from "thirdweb/wallets";
 import { inAppWallet } from "thirdweb/wallets";
-import { avalanche, avalancheFuji, base, baseSepolia, celo, celoSepoliaTestnet } from "thirdweb/chains";
+import { avalanche, avalancheFuji, base, baseSepolia, celo, celoSepoliaTestnet, ethereum } from "thirdweb/chains";
 import { client } from "@/lib/client";
 
-// Supported chains - include Avalanche and Base mainnets
+// Supported chains - include mainnets and testnets
 const supportedChains = [
+  ethereum,         // Ethereum Mainnet (1)
   avalanche,        // Avalanche C-Chain (43114)
   base,             // Base (8453)
   celo,             // Celo (42220)
@@ -49,6 +50,7 @@ function getNetworkDisplayName(chainId: number | undefined): string {
   if (!chainId) return "Not Connected";
 
   const networkMap: Record<number, string> = {
+    1: "Mainnet",
     43114: "Avalanche",
     43113: "Avalanche Fuji",
     8453: "Base",
