@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
-import { PaymentButton } from "./PaymentButton";
+import { PaymentButton, type AcceptOption } from "./PaymentButton";
 import { ServiceSelector } from "./ServiceSelector";
 import type { PaymentRequirements } from "@/lib/utils/x402-payment";
 
@@ -11,6 +11,9 @@ interface Message {
   content: string;
   timestamp: string;
   paymentRequest?: PaymentRequirements & { paymentId: string };
+  // Multi-chain support: x402 v2 accepts array for network selection
+  paymentAccepts?: AcceptOption[];
+  paymentDefaultNetwork?: string;
   attachmentType?: "audio" | "image";
   attachmentPreview?: string;
   transactionHash?: string;
@@ -622,11 +625,15 @@ export function ChatInterface({
         if (paymentHeader) {
           const decoded = atob(paymentHeader);
           const parsed = JSON.parse(decoded);
-          const requirements = parsed.accepts[0];
+
+          // Store full accepts array for multi-chain network selection
+          const accepts: AcceptOption[] = parsed.accepts || [];
+          const defaultNetwork = parsed.defaultNetwork;
+          const requirements = accepts[0]; // First option for backwards compatibility
 
           // Extract token info from extra field for EIP-712 domain construction
-          const tokenName = requirements.extra?.name;
-          const tokenVersion = requirements.extra?.version;
+          const tokenName = requirements?.extra?.name;
+          const tokenVersion = requirements?.extra?.version;
 
           const paymentId = `pay_${Date.now()}`;
 
@@ -651,7 +658,10 @@ export function ChatInterface({
               tokenVersion,
               paymentId,
               endpoint: url
-            }
+            },
+            // Multi-chain support
+            paymentAccepts: accepts,
+            paymentDefaultNetwork: defaultNetwork,
           }]);
           return;
         }
@@ -825,11 +835,15 @@ export function ChatInterface({
         if (paymentHeader) {
           const decoded = atob(paymentHeader);
           const parsed = JSON.parse(decoded);
-          const requirements = parsed.accepts[0]; // Take first acceptance criteria
+
+          // Store full accepts array for multi-chain network selection
+          const accepts: AcceptOption[] = parsed.accepts || [];
+          const defaultNetwork = parsed.defaultNetwork;
+          const requirements = accepts[0]; // First option for backwards compatibility
 
           // Extract token info from extra field for EIP-712 domain construction
-          const tokenName = requirements.extra?.name;
-          const tokenVersion = requirements.extra?.version;
+          const tokenName = requirements?.extra?.name;
+          const tokenVersion = requirements?.extra?.version;
 
           const paymentId = `pay_${Date.now()}`;
 
@@ -853,7 +867,10 @@ export function ChatInterface({
               tokenVersion,
               paymentId,
               endpoint: url
-            }
+            },
+            // Multi-chain support
+            paymentAccepts: accepts,
+            paymentDefaultNetwork: defaultNetwork,
           }]);
           return;
         }
@@ -1249,6 +1266,8 @@ export function ChatInterface({
                   {message.paymentRequest && (
                     <div className="mt-3 pt-2 border-t border-border/20">
                       <PaymentButton
+                        accepts={message.paymentAccepts}
+                        defaultNetwork={message.paymentDefaultNetwork}
                         requirements={message.paymentRequest}
                         onPaymentSigned={async (envelope) => {
                           // Check if this is a chat retry action

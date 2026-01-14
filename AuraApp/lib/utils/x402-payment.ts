@@ -22,6 +22,10 @@ export {
   DEFAULT_RPC_URLS,
   VALID_NETWORKS,
   TRANSFER_WITH_AUTHORIZATION_TYPES,
+  DOMAIN_VERSIONS,
+  getDomainVersion,
+  TOKEN_NAMES,
+  getTokenName,
   // Utilities
   getUSDCAddress,
   getChainId,

@@ -5,9 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { paymentRoutes, x402Config } from "@/lib/config/x402";
-import { toCAIP2Network, parsePriceToUSDC, getUSDCAddress } from "@/lib/utils/x402-payment";
-import { detectTokenInfo } from "@/lib/utils/token-detection";
+import { paymentRoutes, x402Config, SUPPORTED_NETWORKS, usdcAddresses, getCAIP2Network } from "@/lib/config/x402";
+import { parsePriceToUSDC, getTokenName, getDomainVersion } from "@/lib/utils/x402-payment";
 
 export const dynamic = "force-dynamic";
 
@@ -39,44 +38,49 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Create route config object
-    const routeConfig = {
-      price: `$${routePrice}`,
-      network: x402Config.network,
-      description: `Payment for ${endpoint}`,
-    };
+    // Parse price to atomic units (same for all networks)
+    const priceStr = `$${routePrice}`;
+    const priceAmount = parsePriceToUSDC(priceStr);
+    const description = `Payment for ${endpoint}`;
 
-    // Parse price to atomic units
-    const priceAmount = parsePriceToUSDC(routeConfig.price);
-    const usdcAddress = getUSDCAddress(routeConfig.network);
+    // Build accepts array for all supported networks
+    // Each network may have different EIP-712 domain parameters:
+    // - Token name: Celo uses "USDC", others use "USD Coin"
+    // - Version: Celo uses "1", others use "2"
+    const accepts = SUPPORTED_NETWORKS.map((network) => {
+      const usdcAddress = usdcAddresses[network];
+      const caip2Network = getCAIP2Network(network);
+      // Use network-specific token name and version for EIP-712 domain
+      const tokenName = getTokenName(network);
+      const tokenVersion = getDomainVersion(network);
 
-    // Detect token info to pass to client (so it knows the token name for EIP-712 domain)
-    const tokenInfo = await detectTokenInfo(usdcAddress, routeConfig.network);
-    const tokenName = tokenInfo?.name || "USD Coin";
-    const tokenVersion = "2"; // Standard version for EIP-3009 tokens
+      return {
+        scheme: "exact",
+        network: caip2Network,
+        maxAmountRequired: priceAmount.toString(),
+        resource: endpoint,
+        description,
+        mimeType: "application/json",
+        payTo: x402Config.payTo,
+        maxTimeoutSeconds: 30,
+        asset: usdcAddress,
+        extra: {
+          // Token name and version for EIP-712 domain construction
+          // Client and facilitator use this to sign/verify correctly
+          name: tokenName,
+          version: tokenVersion,
+          // Include legacy network name for easier client handling
+          networkName: network,
+        },
+      };
+    });
 
-    // Return x402 v2 compliant payment requirements
+    // Return x402 v2 compliant payment requirements with all supported networks
     return NextResponse.json({
       x402Version: 2,
-      accepts: [
-        {
-          scheme: "exact",
-          network: toCAIP2Network(routeConfig.network),
-          maxAmountRequired: priceAmount.toString(),
-          resource: endpoint,
-          description: routeConfig.description,
-          mimeType: "application/json",
-          payTo: x402Config.payTo,
-          maxTimeoutSeconds: 30,
-          asset: usdcAddress,
-          extra: {
-            // Token name and version for EIP-712 domain construction
-            // Client and facilitator use this to sign/verify correctly
-            name: tokenName,
-            version: tokenVersion,
-          },
-        },
-      ],
+      accepts,
+      // Include default network for backwards compatibility
+      defaultNetwork: x402Config.network,
     });
   } catch (error) {
     console.error("Payment requirements error:", error);
