@@ -488,6 +488,58 @@ The project includes workarounds for third-party TypeScript issues:
 - Transaction hash persistence for "Paid" badge display
 - Proper PAYMENT-RESPONSE header handling
 
+### Celo EIP-712 Signature Fix
+
+Fixed "Signer does not match 'from' address" error on Celo payments caused by EIP-712 domain parameter mismatch.
+
+**Root Cause**: Celo's native USDC contract returns different values than other chains:
+- `name()` returns `"USDC"` (not `"USD Coin"` like Avalanche/Base)
+- `version()` returns `"2"` (code was using `"1"`)
+
+**Solution**: Network-specific EIP-712 domain parameters in `@perkos/middleware-x402`:
+
+```typescript
+// TOKEN_NAMES - Network-specific token names
+const TOKEN_NAMES = {
+  avalanche: "USD Coin",
+  base: "USD Coin",
+  celo: "USDC",           // Celo native USDC returns "USDC" from name()
+  "eip155:42220": "USDC", // CAIP-2 format support
+  // ...
+};
+
+// DOMAIN_VERSIONS - All Circle native USDC uses version "2"
+const DOMAIN_VERSIONS = {
+  avalanche: "2",
+  base: "2",
+  celo: "2",              // Verified: contract.version() returns "2"
+  // ...
+};
+
+// Usage
+const domain = {
+  name: getTokenName(network),      // "USDC" for Celo
+  version: getDomainVersion(network), // "2" for all networks
+  chainId: getChainId(network),
+  verifyingContract: getUSDCAddress(network),
+};
+```
+
+**Files Modified**:
+- `@perkos/middleware-x402` - Added `TOKEN_NAMES`, `getTokenName()`, updated `DOMAIN_VERSIONS`
+- `AuraApp/lib/middleware/x402.ts` - Use `getTokenName()` instead of hardcoded `"USD Coin"`
+- `PerkOS-Stack/StackApp/lib/services/ExactSchemeService.ts` - Network-specific domain construction
+
+**Verification**: For Celo payments, the EIP-712 domain is now:
+```json
+{
+  "name": "USDC",
+  "version": "2",
+  "chainId": 42220,
+  "verifyingContract": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C"
+}
+```
+
 ## 🤝 Contributing
 
 1. Fork the repository
