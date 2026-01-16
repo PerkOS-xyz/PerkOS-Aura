@@ -202,7 +202,7 @@ export default function AdminPage() {
 
             {/* Instructions */}
             <div className="bg-card border border-border rounded-xl p-6 backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Service Overview</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Aura AI Services</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                     <div>
                         <h4 className="text-primary font-medium mb-2">Vision & Audio (4)</h4>

@@ -554,11 +554,11 @@ export class RegistrationService {
 
             const registrationPayload: RegistrationRequest = {
                 url: request?.url || this.serviceUrl,
-                name: request?.name || "PerkOS AI Vendor Service",
+                name: request?.name || serviceDiscovery.service,
                 description: request?.description || serviceDiscovery.description,
                 category: request?.category || "ai",
-                tags: request?.tags || ["ai", "gpt-4", "dall-e", "whisper", "tts", "nlp", "vision", "x402"],
-                iconUrl: request?.iconUrl,
+                tags: request?.tags || ["ai", "aura", "gpt-4o", "flux", "whisper", "tts", "nlp", "vision", "x402"],
+                iconUrl: request?.iconUrl || serviceDiscovery.iconUrl,
                 websiteUrl: request?.websiteUrl || this.serviceUrl,
                 docsUrl: request?.docsUrl || `${this.serviceUrl}/docs`,
                 walletAddress: request?.walletAddress || x402Config.payTo,

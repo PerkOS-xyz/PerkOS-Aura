@@ -85,9 +85,10 @@ export const aiServiceConfig = {
 
 // Service discovery configuration
 export const serviceDiscovery = {
-  service: "PerkOS AI Vendor Service",
+  service: "Aura",
   version: "2.0.0",
-  description: "AI-powered services with x402 micropayments",
+  description: "Aura - Intelligent AI Vendor Service with 20 endpoints powered by GPT-4o, FLUX, and Whisper. x402 v2 micropayments.",
+  iconUrl: process.env.NEXT_PUBLIC_SERVICE_ICON_URL || "https://aura.perkos.xyz/aura-logo.png",
   capabilities: [
     "image-analysis",
     "image-generation",
