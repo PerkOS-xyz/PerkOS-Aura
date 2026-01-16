@@ -8,15 +8,15 @@
   "branding": {
     "logo": "/logo.png",
     "favicon": "/favicon.ico",
-    "primaryColor": "#7c3aed",
-    "secondaryColor": "#06b6d4",
-    "accentColor": "#db2777"
+    "primaryColor": "#8B5CF6",
+    "secondaryColor": "#22D3EE",
+    "accentColor": "#8B5CF6"
   },
   "hero": {
-    "title": "Intelligent AI Services with x402",
-    "subtitle": "Unleash the power of GPT-4o, DALL-E 3, and Whisper",
-    "description": "Experience the next generation of AI services. Ultra-fast, secure, and powered by micropayments.",
-    "image": "/hero-image.png",
+    "title": "Intelligent AI Services",
+    "subtitle": "20 AI endpoints powered by GPT-4o, FLUX, and Whisper",
+    "description": "x402 v2 micropayments on Avalanche, Base, and Celo",
+    "image": "/banner.png",
     "cta": {
       "primary": {
         "text": "Start Creating",
@@ -141,7 +141,7 @@
     "website": "https://perkos.io"
   },
   "footer": {
-    "copyright": "© 2026 Aura Service",
+    "copyright": "© 2026 Aura AI Services",
     "links": [
       {
         "text": "Documentation",

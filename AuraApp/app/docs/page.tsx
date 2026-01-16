@@ -5,15 +5,15 @@ export default function DocsPage() {
         <div className="min-h-screen bg-background text-foreground">
             <main className="container max-w-6xl mx-auto px-4 py-12">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-4xl font-bold font-heading mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    <h1 className="text-4xl font-bold font-heading mb-6 text-aura-gradient">
                         Developer Documentation
                     </h1>
                     <p className="text-muted-foreground">Complete guide to all 20 AI service endpoints with x402 micropayments</p>
                 </div>
 
                 {/* x402 Payment Info */}
-                <div className="bg-primary/10 border border-primary/30 rounded-xl p-6 mb-8">
-                    <h2 className="text-xl font-semibold text-primary mb-3">🔐 x402 v2 Payment Required</h2>
+                <div className="bg-aura-purple/10 border border-aura-purple/30 rounded-xl p-6 mb-8">
+                    <h2 className="text-xl font-semibold text-aura-purple mb-3">🔐 x402 v2 Payment Required</h2>
                     <p className="text-muted-foreground mb-3">All endpoints require x402 v2 payment envelope headers:</p>
                     <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm text-muted-foreground">
                         <div>x-authorization: {`{ "from": "0x...", "to": "0x...", "amount": "1000", "token": "0x...",... } `}</div>
@@ -185,12 +185,12 @@ export default function DocsPage() {
                 </Section>
 
                 {/* Quick Links */}
-                <div className="mt-12 bg-card border border-border rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-primary mb-4">Quick Links</h3>
+                <div className="mt-12 card-aura p-6">
+                    <h3 className="text-lg font-semibold text-aura-gradient mb-4">Quick Links</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <a href="/dashboard" className="text-primary hover:text-primary/80">→ Try in Dashboard</a>
-                        <a href="/admin" className="text-primary hover:text-primary/80">→ Admin Panel</a>
-                        <a href="https://docs.perkos.xyz" className="text-primary hover:text-primary/80">→ x402 Protocol Docs</a>
+                        <a href="/dashboard" className="text-aura-purple hover:text-aura-cyan transition-colors">→ Try in Dashboard</a>
+                        <a href="/admin" className="text-aura-purple hover:text-aura-cyan transition-colors">→ Admin Panel</a>
+                        <a href="https://docs.perkos.xyz" className="text-aura-purple hover:text-aura-cyan transition-colors">→ x402 Protocol Docs</a>
                     </div>
                 </div>
             </main>
@@ -224,20 +224,20 @@ function Endpoint({
     request: any;
 }) {
     return (
-        <div className="bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-colors">
+        <div className="card-aura p-5 hover:border-aura-purple/50 transition-colors">
             <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                        <span className="px-2 py-1 bg-primary text-primary-foreground text-xs font-bold rounded">{method}</span>
-                        <code className="text-secondary font-mono text-sm">{path}</code>
+                        <span className="px-2 py-1 bg-aura-gradient text-white text-xs font-bold rounded">{method}</span>
+                        <code className="text-aura-cyan font-mono text-sm">{path}</code>
                     </div>
                     <p className="text-muted-foreground text-sm mt-2">{description}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
-                    <span className="px-3 py-1 bg-green-600/20 text-green-400 text-sm font-semibold rounded-full border border-green-600/30">
+                    <span className="px-3 py-1 bg-aura-cyan/20 text-aura-cyan text-sm font-semibold rounded-full border border-aura-cyan/30">
                         {price}
                     </span>
-                    <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded border border-secondary/30" title="Requires x402 payment">
+                    <span className="px-2 py-1 bg-aura-purple/10 text-aura-purple text-xs rounded border border-aura-purple/30" title="Requires x402 payment">
                         🔐 x402
                     </span>
                 </div>
@@ -246,7 +246,7 @@ function Endpoint({
                 <summary className="text-muted-foreground text-sm cursor-pointer hover:text-foreground">
                     Show example request →
                 </summary>
-                <pre className="mt-2 bg-muted/50 rounded p-3 overflow-x-auto text-xs text-muted-foreground">
+                <pre className="mt-2 bg-aura-bg-primary rounded p-3 overflow-x-auto text-xs text-aura-cyan">
                     {JSON.stringify(request, null, 2)}
                 </pre>
             </details>

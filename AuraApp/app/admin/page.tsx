@@ -73,7 +73,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-foreground">Registration Status</h3>
                         {loading ? (
-                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <div className="w-4 h-4 border-2 border-aura-purple border-t-transparent rounded-full animate-spin" />
                         ) : registrationStatus?.registered ? (
                             <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded">
                                 Registered
@@ -112,14 +112,14 @@ export default function AdminPage() {
                         <button
                             onClick={loadStatus}
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground text-sm font-medium rounded-lg transition-colors"
+                            className="flex-1 px-4 py-2 bg-aura-gradient hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
                         >
                             {loading ? "Loading..." : "Refresh Status"}
                         </button>
                         <button
                             onClick={handleReregister}
                             disabled={registering || loading}
-                            className="flex-1 px-4 py-2 bg-secondary hover:bg-secondary/90 disabled:opacity-50 disabled:cursor-not-allowed text-secondary-foreground text-sm font-medium rounded-lg transition-colors"
+                            className="flex-1 px-4 py-2 bg-aura-cyan/20 hover:bg-aura-cyan/30 border border-aura-cyan/30 disabled:opacity-50 disabled:cursor-not-allowed text-aura-cyan text-sm font-medium rounded-lg transition-colors"
                         >
                             {registering ? "Registering..." : "Re-register"}
                         </button>
@@ -142,7 +142,7 @@ export default function AdminPage() {
                             </span>
                         )}
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-muted-foreground">
                         {facilitatorHealth
                             ? "Facilitator is responding"
                             : "Facilitator is not responding"}
@@ -155,7 +155,7 @@ export default function AdminPage() {
                     <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Total Endpoints:</span>
-                            <span className="text-primary font-semibold">20</span>
+                            <span className="text-aura-purple font-semibold">20</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Vision & Audio:</span>
@@ -185,7 +185,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <Link
                     href="/dashboard"
-                    className="block bg-gradient-to-br from-primary/20 to-secondary/20 hover:from-primary/30 hover:to-secondary/30 border border-primary/30 rounded-xl p-6 backdrop-blur-sm transition-all"
+                    className="block bg-gradient-to-br from-aura-purple/20 to-aura-cyan/20 hover:from-aura-purple/30 hover:to-aura-cyan/30 border border-aura-purple/30 rounded-xl p-6 backdrop-blur-sm transition-all"
                 >
                     <h3 className="text-lg font-semibold text-foreground mb-2">Main Dashboard</h3>
                     <p className="text-sm text-muted-foreground">Access service discovery and testing</p>
@@ -193,7 +193,7 @@ export default function AdminPage() {
 
                 <Link
                     href="/docs"
-                    className="block bg-gradient-to-br from-secondary/20 to-primary/20 hover:from-secondary/30 hover:to-primary/30 border border-secondary/30 rounded-xl p-6 backdrop-blur-sm transition-all"
+                    className="block bg-gradient-to-br from-aura-cyan/20 to-aura-purple/20 hover:from-aura-cyan/30 hover:to-aura-purple/30 border border-aura-cyan/30 rounded-xl p-6 backdrop-blur-sm transition-all"
                 >
                     <h3 className="text-lg font-semibold text-foreground mb-2">API Documentation</h3>
                     <p className="text-sm text-muted-foreground">View OpenAPI specs and examples</p>
@@ -202,10 +202,10 @@ export default function AdminPage() {
 
             {/* Instructions */}
             <div className="bg-card border border-border rounded-xl p-6 backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Aura AI Services</h3>
+                <h3 className="text-lg font-semibold text-aura-gradient mb-4">Aura AI Services</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                        <h4 className="text-primary font-medium mb-2">Vision & Audio (4)</h4>
+                        <h4 className="text-aura-purple font-medium mb-2">Vision & Audio (4)</h4>
                         <ul className="space-y-1 text-sm text-muted-foreground">
                             <li>• Image Analysis ($0.05)</li>
                             <li>• Image Generation ($0.15)</li>
@@ -214,7 +214,7 @@ export default function AdminPage() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-primary font-medium mb-2">NLP Services (6)</h4>
+                        <h4 className="text-aura-purple font-medium mb-2">NLP Services (6)</h4>
                         <ul className="space-y-1 text-sm text-muted-foreground">
                             <li>• Text Summarization ($0.03)</li>
                             <li>• Translation ($0.03)</li>
@@ -225,7 +225,7 @@ export default function AdminPage() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-primary font-medium mb-2">Business Tools (3)</h4>
+                        <h4 className="text-aura-purple font-medium mb-2">Business Tools (3)</h4>
                         <ul className="space-y-1 text-sm text-muted-foreground">
                             <li>• Email Generation ($0.02)</li>
                             <li>• Product Descriptions ($0.03)</li>
@@ -233,7 +233,7 @@ export default function AdminPage() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-primary font-medium mb-2">Developer Tools (5)</h4>
+                        <h4 className="text-aura-purple font-medium mb-2">Developer Tools (5)</h4>
                         <ul className="space-y-1 text-sm text-muted-foreground">
                             <li>• Code Generation ($0.08)</li>
                             <li>• Code Review ($0.05)</li>
@@ -244,7 +244,7 @@ export default function AdminPage() {
                     </div>
                 </div>
                 <div className="mt-4">
-                    <h4 className="text-primary font-medium mb-2">Advanced (2)</h4>
+                    <h4 className="text-aura-purple font-medium mb-2">Advanced (2)</h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
                         <li>• OCR Text Extraction ($0.04)</li>
                         <li>• Quiz Generator ($0.05)</li>

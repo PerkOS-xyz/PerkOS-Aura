@@ -456,7 +456,7 @@ export default function DashboardPage() {
       >
         {/* Sidebar Header */}
         <div className="p-4 flex items-center justify-between">
-          <div className="font-semibold text-lg">PerkOS AI</div>
+          <div className="font-semibold text-lg text-aura-gradient">Aura</div>
           <button
             onClick={() => setSidebarCollapsed(true)}
             className="md:hidden p-1 hover:bg-muted rounded"
@@ -471,7 +471,7 @@ export default function DashboardPage() {
         <div className="px-3 pb-4 space-y-2">
           <button
             onClick={handleNewConversation}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all shadow-sm group"
+            className="w-full flex items-center gap-3 px-4 py-3 bg-aura-gradient text-white rounded-xl hover:opacity-90 transition-all shadow-sm group aura-glow-sm"
           >
             <div className="bg-white/20 p-1 rounded-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -579,7 +579,7 @@ export default function DashboardPage() {
         {/* Footer / Wallet */}
         <div className="p-3 border-t border-border mt-auto">
           <div className="flex items-center gap-2 p-2 hover:bg-background rounded-lg transition-colors cursor-pointer" onClick={handleCopyAddress}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-aura-gradient flex items-center justify-center text-white text-xs font-bold">
               {account.address.slice(2, 4).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -637,7 +637,7 @@ export default function DashboardPage() {
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   placeholder="My AI Project"
-                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-aura-purple"
                 />
               </div>
               <div>
@@ -649,7 +649,7 @@ export default function DashboardPage() {
                   onChange={(e) => setNewProjectDescription(e.target.value)}
                   placeholder="What is this project about?"
                   rows={3}
-                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary resize-none"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-aura-purple resize-none"
                 />
               </div>
             </div>
@@ -667,7 +667,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleCreateProject}
                 disabled={!newProjectName.trim() || creatingProject}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-aura-gradient text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
               >
                 {creatingProject ? "Creating..." : "Create Project"}
               </button>

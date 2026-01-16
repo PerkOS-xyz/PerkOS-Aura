@@ -100,7 +100,7 @@ export function Header() {
         {/* Left: Logo */}
         <div className="flex-1 flex justify-start">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-3xl font-bold font-heading bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <span className="text-3xl font-bold font-heading text-aura-gradient">
               Aura
             </span>
           </Link>
@@ -124,7 +124,7 @@ export function Header() {
           {isAdmin && (
             <Link
               href="/admin"
-              className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname?.startsWith('/admin') ? "text-cyan-400" : "text-muted-foreground"}`}
+              className={`text-sm font-medium transition-colors hover:text-aura-cyan ${pathname?.startsWith('/admin') ? "text-aura-cyan" : "text-muted-foreground"}`}
             >
               Admin
             </Link>
@@ -188,7 +188,7 @@ export function Header() {
             {isAdmin && (
               <Link
                 href="/admin"
-                className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname?.startsWith('/admin') ? "text-cyan-400" : "text-muted-foreground"}`}
+                className={`text-sm font-medium transition-colors hover:text-aura-cyan ${pathname?.startsWith('/admin') ? "text-aura-cyan" : "text-muted-foreground"}`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Admin

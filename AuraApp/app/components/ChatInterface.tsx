@@ -139,7 +139,7 @@ function PaidBadge({ paymentInfo }: { paymentInfo: ParsedPaymentInfo["paymentInf
             href={explorerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-aura-purple hover:text-aura-purple/80 hover:bg-aura-purple/10 rounded transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -1033,7 +1033,7 @@ export function ChatInterface({
         <div className="w-full max-w-3xl space-y-8 animate-fadeIn">
           {/* Hero Section */}
           <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+            <h1 className="text-4xl font-bold text-aura-gradient">
               Hello, {account.address.slice(0, 6)}...{account.address.slice(-5)}
             </h1>
             <p className="text-xl text-muted-foreground">
@@ -1043,7 +1043,7 @@ export function ChatInterface({
 
           {/* Central Input */}
           <div className="relative max-w-2xl mx-auto w-full">
-            <div className="relative flex items-center bg-muted/50 border border-border rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all p-2">
+            <div className="relative flex items-center bg-muted/50 border border-border rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-aura-purple/20 focus-within:border-aura-purple transition-all p-2">
               <input
                 type="text"
                 value={input}
@@ -1102,7 +1102,7 @@ export function ChatInterface({
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() && !attachedFile && recordingState === "idle"}
-                  className="p-2 bg-primary text-primary-foreground rounded-xl disabled:opacity-50 hover:opacity-90 transition-opacity"
+                  className="p-2 bg-aura-gradient text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition-opacity"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -1155,7 +1155,7 @@ export function ChatInterface({
                 <div className={`flex flex-col max-w-[85%] ${message.role === "user" ? "items-end" : "items-start"}`}>
                 <div
                   className={`rounded-2xl px-5 py-3 shadow-sm ${message.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-none"
+                    ? "bg-aura-gradient text-white rounded-br-none"
                     : "bg-muted text-foreground rounded-bl-none"
                   }`}
                 >
@@ -1251,7 +1251,7 @@ export function ChatInterface({
                         href={getBlockExplorerUrl(message.paymentNetwork, message.transactionHash)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-aura-purple hover:text-aura-purple/80 hover:bg-aura-purple/10 rounded transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -1336,9 +1336,9 @@ export function ChatInterface({
           {loading && (
             <div className="flex justify-start">
               <div className="bg-muted rounded-2xl rounded-bl-none px-4 py-3 flex items-center space-x-2">
-                <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
               </div>
             </div>
           )}
@@ -1380,7 +1380,7 @@ export function ChatInterface({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || recordingState !== "idle"}
-            className="p-3 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-colors disabled:opacity-50"
+            className="p-3 text-muted-foreground hover:text-aura-purple hover:bg-aura-purple/10 rounded-xl transition-colors disabled:opacity-50"
             title="Attach image"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1394,7 +1394,7 @@ export function ChatInterface({
             disabled={loading || recordingState === "processing"}
             className={`p-3 rounded-xl transition-colors ${recordingState === "recording"
               ? "bg-red-500/10 text-red-500 animate-pulse ring-1 ring-red-500"
-              : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+              : "text-muted-foreground hover:text-aura-purple hover:bg-aura-purple/10"
               } disabled:opacity-50`}
             title={recordingState === "recording" ? "Stop recording" : "Start recording"}
           >
@@ -1441,7 +1441,7 @@ export function ChatInterface({
           <button
             onClick={handleSend}
             disabled={loading || recordingState !== "idle" || (!input.trim() && !attachedFile)}
-            className="p-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+            className="p-3 bg-aura-gradient text-white rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>

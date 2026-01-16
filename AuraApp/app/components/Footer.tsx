@@ -13,10 +13,10 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-lg font-bold font-heading mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <h3 className="text-lg font-bold font-heading mb-4 text-aura-gradient">
               {configData.service?.name || "Aura"}
             </h3>
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               {configData.service?.description || ""}
             </p>
             <div className="flex space-x-4">
@@ -25,7 +25,7 @@ export function Footer() {
                   href={`https://twitter.com/${social.twitter.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-cyan-400 transition-colors"
+                  className="text-muted-foreground hover:text-aura-cyan transition-colors"
                 >
                   Twitter
                 </a>
@@ -35,7 +35,7 @@ export function Footer() {
                   href={`https://github.com/${social.github}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-cyan-400 transition-colors"
+                  className="text-muted-foreground hover:text-aura-cyan transition-colors"
                 >
                   GitHub
                 </a>
@@ -45,7 +45,7 @@ export function Footer() {
                   href={social.discord}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-cyan-400 transition-colors"
+                  className="text-muted-foreground hover:text-aura-cyan transition-colors"
                 >
                   Discord
                 </a>
@@ -55,13 +55,13 @@ export function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-300 mb-4">Quick Links</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-4">Quick Links</h4>
             <ul className="space-y-2">
               {(footer.links || []).map((link: { text: string; url: string }) => (
                 <li key={link.url}>
                   <Link
                     href={link.url}
-                    className="text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+                    className="text-sm text-muted-foreground hover:text-aura-cyan transition-colors"
                   >
                     {link.text}
                   </Link>
@@ -72,12 +72,12 @@ export function Footer() {
 
           {/* Resources */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-300 mb-4">Resources</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-4">Resources</h4>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="/dashboard/docs"
-                  className="text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+                  className="text-sm text-muted-foreground hover:text-aura-cyan transition-colors"
                 >
                   API Documentation
                 </Link>
@@ -87,7 +87,7 @@ export function Footer() {
                   href="https://x402.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+                  className="text-sm text-muted-foreground hover:text-aura-cyan transition-colors"
                 >
                   x402 Protocol
                 </a>
@@ -96,8 +96,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-slate-800 text-center text-sm text-gray-400">
-          {footer.copyright || "© 2025 PerkOS AI Vendor Service"}
+        <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
+          {footer.copyright || "© 2026 Aura AI Services"}
         </div>
       </div>
     </footer>
