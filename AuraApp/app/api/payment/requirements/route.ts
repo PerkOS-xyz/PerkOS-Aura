@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { paymentRoutes, x402Config, SUPPORTED_NETWORKS, usdcAddresses, getCAIP2Network } from "@/lib/config/x402";
+import { paymentRoutes, x402Config, SUPPORTED_NETWORKS, usdcAddresses, getCAIP2Network, getResourceUrl } from "@/lib/config/x402";
 import { parsePriceToUSDC, getTokenName, getDomainVersion } from "@/lib/utils/x402-payment";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         scheme: "exact",
         network: caip2Network,
         maxAmountRequired: priceAmount.toString(),
-        resource: endpoint,
+        resource: getResourceUrl(endpoint), // Full URL of resource (per x402 v2 spec)
         description,
         mimeType: "application/json",
         payTo: x402Config.payTo,

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { x402Config, paymentRoutes, SUPPORTED_NETWORKS, usdcAddresses, getCAIP2Network, networkMappings } from "@/lib/config/x402";
+import { x402Config, paymentRoutes, SUPPORTED_NETWORKS, usdcAddresses, getCAIP2Network, networkMappings, getResourceUrl } from "@/lib/config/x402";
 import { toCAIP2Network, parsePriceToUSDC, getDomainVersion, getTokenName } from "@/lib/utils/x402-payment";
 
 export interface PaymentEnvelope {
@@ -190,7 +190,7 @@ export async function verifyPayment(
             scheme: "exact", // Required: exact or deferred
             network: getCAIP2Network(normalizedEnvelopeNetwork), // Use envelope's network in CAIP-2 format
             maxAmountRequired: priceAmount.toString(), // Atomic units as string (e.g., "1000" for $0.001)
-            resource: route, // URL of resource (per x402 v2 spec)
+            resource: getResourceUrl(route), // Full URL of resource (per x402 v2 spec)
             description: routeConfig.description || "Payment required",
             mimeType: "application/json", // Response MIME type (per x402 v2 spec)
             payTo: x402Config.payTo,
@@ -264,7 +264,8 @@ export async function verifyPayment(
  * Settle payment with PerkOS-Stack facilitator
  */
 export async function settlePayment(
-  envelope: PaymentEnvelope
+  envelope: PaymentEnvelope,
+  resourceUrl: string // Full URL of the resource being accessed (required for vendor domain extraction)
 ): Promise<{ success: boolean; transactionHash?: string; error?: string }> {
   try {
     const settleUrl = `${x402Config.facilitatorUrl}/api/v2/x402/settle`;
@@ -312,7 +313,7 @@ export async function settlePayment(
             scheme: "exact", // Must match paymentPayload scheme
             network: toCAIP2Network(envelope.network), // V2 uses CAIP-2 format
             maxAmountRequired: envelope.authorization.value, // Use value from authorization
-            resource: "", // Not needed for settlement
+            resource: resourceUrl, // Full URL for vendor domain extraction
             description: "Payment settlement",
             mimeType: "application/json",
             payTo: envelope.authorization.to,
@@ -445,7 +446,7 @@ export function create402Response(
       scheme: "exact",
       network: caip2Network,
       maxAmountRequired: priceAmount.toString(),
-      resource: routePath,
+      resource: getResourceUrl(routePath), // Full URL of resource (per x402 v2 spec)
       description,
       mimeType: "application/json",
       payTo: x402Config.payTo,
@@ -548,8 +549,9 @@ export async function verifyX402Payment(
   }
 
   // Settle payment
-  console.log("💰 Attempting to settle payment...");
-  const settlement = await settlePayment(envelope);
+  const resourceUrl = getResourceUrl(routePath);
+  console.log("💰 Attempting to settle payment...", { resourceUrl });
+  const settlement = await settlePayment(envelope, resourceUrl);
   if (!settlement.success) {
     console.error("❌ Payment settlement failed:", settlement.error);
 
