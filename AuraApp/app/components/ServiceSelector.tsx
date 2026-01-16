@@ -260,7 +260,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
                         key={category}
                         onClick={() => setSelectedCategory(category)}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${selectedCategory === category
-                                ? "bg-primary text-primary-foreground"
+                                ? "bg-aura-gradient text-white"
                                 : "bg-muted text-muted-foreground hover:bg-muted/80"
                             }`}
                     >
@@ -279,9 +279,9 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
                                 : service.promptTemplate;
                             onSelect(prompt);
                         }}
-                        className="flex flex-col items-start p-4 h-full bg-card border border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 rounded-xl transition-all text-left group"
+                        className="flex flex-col items-start p-4 h-full bg-card border border-border hover:border-aura-purple/50 hover:shadow-lg hover:shadow-aura-purple/10 rounded-xl transition-all text-left group"
                     >
-                        <div className="p-2 bg-muted rounded-lg text-primary mb-3 group-hover:scale-110 transition-transform duration-300">
+                        <div className="p-2 bg-muted rounded-lg text-aura-purple mb-3 group-hover:scale-110 transition-transform duration-300">
                             {service.icon}
                         </div>
                         <h3 className="font-semibold text-foreground mb-1">{service.title}</h3>

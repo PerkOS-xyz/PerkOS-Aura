@@ -532,9 +532,9 @@ export function PaymentButton({
   );
 
   return (
-    <div className="border border-primary/30 rounded-lg p-4 bg-primary/10 w-full max-w-md">
+    <div className="border border-aura-purple/30 rounded-lg p-4 bg-aura-purple/10 w-full max-w-md">
       <div className="mb-3">
-        <p className="text-sm font-medium text-primary mb-1">Payment Required</p>
+        <p className="text-sm font-medium text-aura-purple mb-1">Payment Required</p>
         <p className="text-xs text-muted-foreground">
           {resourceName} requires {priceDisplay} payment
         </p>
@@ -591,7 +591,7 @@ export function PaymentButton({
       <button
         onClick={handleSign}
         disabled={isSigning || isSwitchingChain || isWrongChain || (balance && !balance.hasEnough)}
-        className="w-full px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+        className="w-full px-4 py-2 bg-aura-gradient hover:opacity-90 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
       >
         {(isSigning || isSwitchingChain) && (
           <svg
@@ -619,7 +619,7 @@ export function PaymentButton({
       </button>
 
       {isSigning && (
-        <p className="text-xs text-primary mt-2 animate-pulse">
+        <p className="text-xs text-aura-purple mt-2 animate-pulse">
           ⏳ Signing payment and processing request...
         </p>
       )}
