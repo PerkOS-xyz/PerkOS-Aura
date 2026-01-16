@@ -10,6 +10,7 @@ export interface PaymentConfig {
   facilitatorUrl: string;
   network: NetworkName;
   priceUsd: string;
+  serviceUrl: string; // Full URL of this service (for x402 resource field)
 }
 
 // Supported networks for multi-chain payments
@@ -25,11 +26,17 @@ const requiredEnvVars = {
   FACILITATOR_URL: process.env.FACILITATOR_URL || process.env.NEXT_PUBLIC_FACILITATOR_URL || "https://stack.perkos.xyz",
   NETWORK: process.env.NEXT_PUBLIC_NETWORK || "avalanche",
   PAYMENT_PRICE_USD: process.env.NEXT_PUBLIC_PAYMENT_PRICE_USD || "0.01",
+  SERVICE_URL: process.env.NEXT_PUBLIC_SERVICE_URL || "https://aura.perkos.xyz", // Full URL of this service
 };
 
 // Check for missing required variables (only payTo is critical)
 if (!requiredEnvVars.PAY_TO_ADDRESS) {
   console.warn("⚠️  PAY_TO_ADDRESS not set. Payment verification will fail.");
+}
+
+// Warn if SERVICE_URL uses default (external apps need the correct URL)
+if (!process.env.NEXT_PUBLIC_SERVICE_URL) {
+  console.warn("⚠️  NEXT_PUBLIC_SERVICE_URL not set. Using default: https://aura.perkos.xyz");
 }
 
 // Validate network
@@ -44,7 +51,17 @@ export const x402Config: PaymentConfig = {
   facilitatorUrl: requiredEnvVars.FACILITATOR_URL,
   network: requiredEnvVars.NETWORK as PaymentConfig["network"],
   priceUsd: requiredEnvVars.PAYMENT_PRICE_USD,
+  serviceUrl: requiredEnvVars.SERVICE_URL,
 };
+
+// Helper to build full resource URL from path
+export function getResourceUrl(path: string): string {
+  // Remove leading slash if present for consistent joining
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  // Remove trailing slash from service URL if present
+  const baseUrl = x402Config.serviceUrl.replace(/\/$/, "");
+  return `${baseUrl}${cleanPath}`;
+}
 
 // Helper to parse price from env with fallback
 const parsePrice = (envVar: string | undefined, fallback: number): number => {
