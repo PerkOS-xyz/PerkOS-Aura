@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ConnectButton, useActiveAccount, useActiveWalletChain } from "thirdweb/react";
 import { createWallet } from "thirdweb/wallets";
@@ -97,10 +98,19 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="container max-w-6xl mx-auto flex h-16 items-center px-4">
-        {/* Left: Logo */}
+        {/* Left: Logo + Brand Name */}
         <div className="flex-1 flex justify-start">
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="text-3xl font-bold font-heading text-aura-gradient">
+          <Link href="/" className="group flex items-center gap-2">
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-aura-purple/30">
+              {/* <Image
+                src="/logo.png"
+                alt="Aura"
+                fill
+                className="object-contain"
+                priority
+              /> */}
+            </div>
+            <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#8B5CF6] to-[#22D3EE] transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(139,92,246,0.5)]">
               Aura
             </span>
           </Link>

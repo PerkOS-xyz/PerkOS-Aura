@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Footer } from "./components/Footer";
 import configData from "./config.json";
 
@@ -26,59 +25,93 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
-      {/* Animated Background Grid with Aura Gradient Overlay */}
-      <div className="fixed inset-0 bg-[linear-gradient(to_right,hsl(var(--muted)/0.05)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--muted)/0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none" />
-
-      {/* Subtle Aura gradient orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-1/2 -left-1/4 w-[800px] h-[800px] bg-aura-purple/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute -bottom-1/2 -right-1/4 w-[800px] h-[800px] bg-aura-cyan/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
+      {/* Animated Background Grid */}
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,hsl(var(--muted)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--muted)/0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
 
       <div className="relative">
-        {/* Hero Section with Banner */}
-        <section className="container mx-auto px-4 pt-12 pb-20">
-          <div className="max-w-6xl mx-auto">
-            {/* Banner Image */}
-            <div className="flex justify-center mb-12">
-              <div className="relative aura-glow rounded-2xl overflow-hidden">
-                <Image
-                  src="/banner.png"
-                  alt="Aura - Intelligent AI Services"
-                  width={600}
-                  height={200}
-                  className="rounded-2xl"
-                  priority
-                />
-              </div>
-            </div>
+        {/* Hero Section */}
+        <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+          {/* Animated gradient background */}
+          <div className="absolute inset-0">
+            {/* Main gradient orb - center */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-aura-purple/30 via-aura-purple/10 to-transparent rounded-full blur-[100px] animate-pulse" />
 
-            {/* Hero Content */}
-            <div className="text-center">
-              <h1 className="text-5xl md:text-7xl font-bold mb-6 text-aura-gradient leading-tight">
+            {/* Secondary orb - top right */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-aura-cyan/20 via-aura-cyan/5 to-transparent rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s', animationDuration: '4s' }} />
+
+            {/* Tertiary orb - bottom left */}
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-aura-purple/20 via-aura-purple/5 to-transparent rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s', animationDuration: '5s' }} />
+
+            {/* Accent orb - moving */}
+            <div className="absolute top-1/4 right-1/4 w-[200px] h-[200px] bg-aura-cyan/15 rounded-full blur-[60px] animate-bounce" style={{ animationDuration: '6s' }} />
+          </div>
+
+          {/* Floating geometric elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Floating squares */}
+            <div className="absolute top-[15%] left-[10%] w-4 h-4 border border-aura-purple/30 rotate-45 animate-float" style={{ animationDelay: '0s' }} />
+            <div className="absolute top-[25%] right-[15%] w-6 h-6 border border-aura-cyan/30 rotate-12 animate-float" style={{ animationDelay: '1s' }} />
+            <div className="absolute bottom-[30%] left-[20%] w-3 h-3 bg-aura-purple/20 rotate-45 animate-float" style={{ animationDelay: '2s' }} />
+            <div className="absolute top-[60%] right-[10%] w-5 h-5 border border-aura-purple/20 rotate-45 animate-float" style={{ animationDelay: '0.5s' }} />
+            <div className="absolute bottom-[20%] right-[25%] w-4 h-4 bg-aura-cyan/15 rotate-12 animate-float" style={{ animationDelay: '1.5s' }} />
+
+            {/* Floating circles */}
+            <div className="absolute top-[20%] left-[25%] w-2 h-2 bg-aura-cyan/30 rounded-full animate-float" style={{ animationDelay: '0.3s' }} />
+            <div className="absolute top-[40%] right-[20%] w-3 h-3 bg-aura-purple/25 rounded-full animate-float" style={{ animationDelay: '1.3s' }} />
+            <div className="absolute bottom-[25%] left-[15%] w-2 h-2 bg-aura-cyan/20 rounded-full animate-float" style={{ animationDelay: '2.3s' }} />
+
+            {/* Gradient lines */}
+            <div className="absolute top-[30%] left-[5%] w-20 h-[1px] bg-gradient-to-r from-transparent via-aura-purple/30 to-transparent rotate-45 animate-pulse" />
+            <div className="absolute bottom-[35%] right-[8%] w-16 h-[1px] bg-gradient-to-r from-transparent via-aura-cyan/30 to-transparent -rotate-45 animate-pulse" style={{ animationDelay: '1s' }} />
+          </div>
+
+          {/* Hero Content */}
+          <div className="relative z-10 container mx-auto px-4">
+            <div className="max-w-5xl mx-auto text-center">
+              {/* Animated Logo */}
+              <div className="mb-8 relative inline-block">
+                <div className="relative">
+                  {/* Glow effect behind logo */}
+                  <div className="absolute inset-0 text-8xl md:text-9xl font-bold blur-2xl opacity-50 bg-gradient-to-r from-aura-purple to-aura-cyan bg-clip-text text-transparent select-none">
+                    Aura
+                  </div>
+                  {/* Main logo */}
+                  <h1 className="relative text-8xl md:text-9xl font-bold bg-gradient-to-r from-aura-purple via-aura-cyan to-aura-purple bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
+                    Aura
+                  </h1>
+                </div>
+                {/* Underline accent */}
+                <div className="mt-2 mx-auto w-32 h-1 bg-gradient-to-r from-transparent via-aura-cyan to-transparent rounded-full" />
+              </div>
+
+              {/* Tagline */}
+              <h2 className="text-3xl md:text-5xl font-bold mb-6 text-foreground">
                 {hero.title || "Intelligent AI Services"}
-              </h1>
+              </h2>
+
               <p className="text-xl md:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto">
                 {hero.subtitle || "20 AI endpoints powered by GPT-4o, FLUX, and Whisper"}
               </p>
-              <p className="text-lg text-muted-foreground/80 mb-12 max-w-2xl mx-auto">
+
+              <p className="text-lg text-muted-foreground/70 mb-12 max-w-2xl mx-auto">
                 {hero.description || "x402 v2 micropayments on Avalanche, Base, and Celo"}
               </p>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
                 {hero.cta?.primary && (
                   <Link
                     href={hero.cta.primary.link}
-                    className="btn-aura-primary text-lg"
+                    className="group relative px-8 py-4 bg-gradient-to-r from-aura-purple to-aura-cyan rounded-xl font-semibold text-lg text-white overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-aura-purple/25"
                   >
-                    {hero.cta.primary.text}
+                    <span className="relative z-10">{hero.cta.primary.text}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-aura-cyan to-aura-purple opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </Link>
                 )}
                 {hero.cta?.secondary && (
                   <Link
                     href={hero.cta.secondary.link}
-                    className="px-8 py-4 border-2 border-aura-purple/30 text-foreground hover:border-aura-purple/60 hover:text-aura-purple font-semibold rounded-xl transition-all duration-300 text-lg backdrop-blur-sm"
+                    className="px-8 py-4 border-2 border-aura-purple/30 text-foreground hover:border-aura-cyan/60 hover:text-aura-cyan font-semibold rounded-xl transition-all duration-300 text-lg backdrop-blur-sm hover:bg-aura-cyan/5"
                   >
                     {hero.cta.secondary.text}
                   </Link>
@@ -86,20 +119,30 @@ export default function Home() {
               </div>
 
               {/* Stats Row */}
-              <div className="grid grid-cols-3 gap-8 mt-16 max-w-2xl mx-auto">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-aura-gradient">20</div>
-                  <div className="text-sm text-muted-foreground mt-1">AI Endpoints</div>
+              <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
+                <div className="group relative p-6 rounded-2xl bg-gradient-to-br from-aura-purple/10 to-transparent border border-aura-purple/20 hover:border-aura-purple/40 transition-all duration-300">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-aura-purple to-aura-cyan bg-clip-text text-transparent">20</div>
+                  <div className="text-sm text-muted-foreground mt-2">AI Endpoints</div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-aura-purple/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300" />
                 </div>
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-aura-gradient">3</div>
-                  <div className="text-sm text-muted-foreground mt-1">Chains Supported</div>
+                <div className="group relative p-6 rounded-2xl bg-gradient-to-br from-aura-cyan/10 to-transparent border border-aura-cyan/20 hover:border-aura-cyan/40 transition-all duration-300">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-aura-cyan to-aura-purple bg-clip-text text-transparent">3</div>
+                  <div className="text-sm text-muted-foreground mt-2">Chains Supported</div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-aura-cyan/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300" />
                 </div>
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-aura-gradient">$0.01</div>
-                  <div className="text-sm text-muted-foreground mt-1">Starting Price</div>
+                <div className="group relative p-6 rounded-2xl bg-gradient-to-br from-aura-purple/10 to-transparent border border-aura-purple/20 hover:border-aura-purple/40 transition-all duration-300">
+                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-aura-purple to-aura-cyan bg-clip-text text-transparent">$0.01</div>
+                  <div className="text-sm text-muted-foreground mt-2">Starting Price</div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-aura-purple/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+            <div className="w-6 h-10 rounded-full border-2 border-aura-purple/30 flex items-start justify-center p-2">
+              <div className="w-1 h-2 bg-aura-purple/50 rounded-full animate-pulse" />
             </div>
           </div>
         </section>
