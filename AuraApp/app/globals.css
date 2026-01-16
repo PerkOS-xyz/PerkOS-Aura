@@ -2,61 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @layer base {
   :root {
-    /* Neon Horizon Theme - Dark Default */
-    --background: 224 71% 4%;     /* #020617 (Deep Midnight) */
-    --foreground: 210 40% 98%;    /* #f8fafc (Pale Blue/White) */
-    
-    --card: 222 47% 11%;          /* Slightly lighter than bg */
-    --card-foreground: 210 40% 98%;
+    /* ========================================
+       AURA BRAND THEME
+       Based on Aura Brand Book v1.0
+       ======================================== */
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
+    /* Background Colors (from Brand Book) */
+    --background: 220 32% 6%;           /* #0B0E14 (bg-primary) */
+    --foreground: 0 0% 100%;            /* #FFFFFF (text-primary) */
 
-    --primary: 262 83% 58%;       /* #7c3aed (Electric Purple) */
-    --primary-foreground: 210 40% 98%;
+    /* Card/Surface Colors */
+    --card: 222 47% 11%;                /* #111827 (bg-secondary) */
+    --card-foreground: 0 0% 100%;
 
-    --secondary: 189 94% 43%;     /* #06b6d4 (Cyan) */
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --popover: 220 26% 12%;             /* #161B26 (bg-surface) */
+    --popover-foreground: 0 0% 100%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    /* Primary: Aura Purple #8B5CF6 */
+    --primary: 258 90% 66%;
+    --primary-foreground: 0 0% 100%;
 
-    --accent: 331 82% 51%;        /* #db2777 (Hot Pink) */
-    --accent-foreground: 210 40% 98%;
+    /* Secondary: Aura Cyan #22D3EE */
+    --secondary: 189 86% 53%;
+    --secondary-foreground: 220 32% 6%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Muted Colors */
+    --muted: 220 26% 12%;               /* #161B26 */
+    --muted-foreground: 240 4% 65%;     /* #A1A1AA (text-secondary) */
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 262 83% 58%;          /* Matches Primary */
+    /* Accent: Aura Gradient Midpoint (Purple-Cyan blend) */
+    --accent: 220 90% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    /* Destructive (Error) */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 220 26% 18%;
+    --input: 220 26% 18%;
+    --ring: 258 90% 66%;                /* Matches Primary (Aura Purple) */
+
+    /* Border Radius (Rounded square system from Brand Book) */
+    --radius: 0.75rem;
   }
 
   .dark {
-    /* Same as root since we are dark-first/dark-only for this theme */
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
+    /* Same as root - Aura is dark-first */
+    --background: 220 32% 6%;
+    --foreground: 0 0% 100%;
     --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 189 94% 43%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 331 82% 51%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 262 83% 58%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 26% 12%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 258 90% 66%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 189 86% 53%;
+    --secondary-foreground: 220 32% 6%;
+    --muted: 220 26% 12%;
+    --muted-foreground: 240 4% 65%;
+    --accent: 220 90% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 26% 18%;
+    --input: 220 26% 18%;
+    --ring: 258 90% 66%;
   }
 }
 
@@ -64,8 +80,97 @@
   * {
     @apply border-border;
   }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
+@layer components {
+  /* Aura Brand Gradient Text */
+  .text-aura-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(90deg, #8B5CF6 0%, #22D3EE 100%);
+  }
+
+  /* Aura Brand Gradient Background */
+  .bg-aura-gradient {
+    background-image: linear-gradient(90deg, #8B5CF6 0%, #22D3EE 100%);
+  }
+
+  /* Aura Gradient Border */
+  .border-aura-gradient {
+    position: relative;
+    background: linear-gradient(var(--background), var(--background)) padding-box,
+                linear-gradient(90deg, #8B5CF6 0%, #22D3EE 100%) border-box;
+    border: 1px solid transparent;
+  }
+
+  /* Aura Glow Effect */
+  .aura-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3),
+                0 0 40px rgba(34, 211, 238, 0.2);
+  }
+
+  .aura-glow-sm {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.2),
+                0 0 20px rgba(34, 211, 238, 0.1);
+  }
+
+  .aura-glow-lg {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.4),
+                0 0 60px rgba(34, 211, 238, 0.3);
+  }
+
+  /* Aura Button Styles */
+  .btn-aura-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300;
+    background-image: linear-gradient(90deg, #8B5CF6 0%, #22D3EE 100%);
+  }
+
+  .btn-aura-primary:hover {
+    @apply transform scale-105;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4),
+                0 0 40px rgba(34, 211, 238, 0.3);
+  }
+
+  /* Aura Card Style */
+  .card-aura {
+    @apply bg-card border border-border rounded-2xl backdrop-blur-sm;
+    background: linear-gradient(180deg,
+      rgba(17, 24, 39, 0.8) 0%,
+      rgba(11, 14, 20, 0.9) 100%);
+  }
+
+  /* Animated Gradient Background */
+  .bg-aura-animated {
+    background: linear-gradient(-45deg, #0B0E14, #111827, #8B5CF6, #22D3EE);
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+}
+
+@layer utilities {
+  /* Text shadow for glow effects */
+  .text-shadow-aura {
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.5),
+                 0 0 20px rgba(34, 211, 238, 0.3);
+  }
+
+  /* Backdrop blur variations */
+  .backdrop-aura {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+}
