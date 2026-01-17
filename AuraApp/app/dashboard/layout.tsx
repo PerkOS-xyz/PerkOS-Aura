@@ -2,7 +2,7 @@
 
 import { useActiveAccount } from "thirdweb/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export default function DashboardLayout({
   children,
@@ -12,9 +12,31 @@ export default function DashboardLayout({
   const account = useActiveAccount();
   const router = useRouter();
 
+  // Track if we've ever had an account connected in this session
+  // This prevents redirecting on momentary wallet disconnections (e.g., during signing)
+  const wasConnectedRef = useRef(false);
+
+  useEffect(() => {
+    if (account) {
+      wasConnectedRef.current = true;
+    }
+  }, [account]);
+
   useEffect(() => {
     if (!account) {
-      router.push("/");
+      // Different delays based on whether wallet was previously connected
+      // - If never connected: redirect quickly (first load without wallet)
+      // - If was connected: wait longer (wallet operations can cause momentary disconnection)
+      const delay = wasConnectedRef.current ? 3000 : 500;
+
+      const timer = setTimeout(() => {
+        // Double-check account is still not connected before redirecting
+        if (!account) {
+          console.log("[DashboardLayout] Redirecting to landing - no wallet connected");
+          router.push("/");
+        }
+      }, delay);
+      return () => clearTimeout(timer);
     }
   }, [account, router]);
 
