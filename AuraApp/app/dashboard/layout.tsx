@@ -23,24 +23,25 @@ export default function DashboardLayout({
   }, [account]);
 
   useEffect(() => {
-    if (!account) {
-      // Different delays based on whether wallet was previously connected
-      // - If never connected: redirect quickly (first load without wallet)
-      // - If was connected: wait longer (wallet operations can cause momentary disconnection)
-      const delay = wasConnectedRef.current ? 3000 : 500;
-
+    // Only redirect if wallet was NEVER connected in this session
+    // If wallet was connected before, don't redirect - the user may be in the middle of
+    // a long-running operation (e.g., image generation which takes 15+ seconds)
+    // and thirdweb can momentarily report account as undefined during wallet operations
+    if (!account && !wasConnectedRef.current) {
+      // Small delay to allow wallet to initialize on page load
       const timer = setTimeout(() => {
-        // Double-check account is still not connected before redirecting
-        if (!account) {
-          console.log("[DashboardLayout] Redirecting to landing - no wallet connected");
+        if (!account && !wasConnectedRef.current) {
+          console.log("[DashboardLayout] Redirecting to landing - wallet never connected");
           router.push("/");
         }
-      }, delay);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [account, router]);
 
-  if (!account) {
+  // If wallet was previously connected, always render children even if account is momentarily undefined
+  // This prevents losing component state during wallet operations (signing, etc.)
+  if (!account && !wasConnectedRef.current) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
