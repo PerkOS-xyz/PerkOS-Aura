@@ -73,6 +73,41 @@ export default function DashboardPage() {
   // Track recently deleted conversations to prevent race conditions
   const recentlyDeletedRef = useRef<Set<string>>(new Set());
 
+  // Cache configuration
+  const CACHE_DURATION_MS = 30000; // 30 seconds cache validity
+  const getCacheKey = (projectId?: string) =>
+    `aura_conversations_${account?.address}_${projectId || "all"}`;
+
+  // Check if cached data is still valid
+  const getCachedConversations = useCallback((projectId?: string): { data: Conversation[], isValid: boolean } | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cacheKey = getCacheKey(projectId);
+      const cached = sessionStorage.getItem(cacheKey);
+      if (!cached) return null;
+
+      const { data, timestamp } = JSON.parse(cached);
+      const isValid = Date.now() - timestamp < CACHE_DURATION_MS;
+      return { data, isValid };
+    } catch {
+      return null;
+    }
+  }, [account?.address]);
+
+  // Save conversations to cache
+  const setCachedConversations = useCallback((conversations: Conversation[], projectId?: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      const cacheKey = getCacheKey(projectId);
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        data: conversations,
+        timestamp: Date.now(),
+      }));
+    } catch {
+      // Ignore storage errors (quota exceeded, etc.)
+    }
+  }, [account?.address]);
+
   // UI state
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -80,6 +115,9 @@ export default function DashboardPage() {
   const [creatingProject, setCreatingProject] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showConversationList, setShowConversationList] = useState(false);
+  const [showAllConversations, setShowAllConversations] = useState(false);
+  const [recentSectionExpanded, setRecentSectionExpanded] = useState(false);
+  const hasLoadedConversationsRef = useRef(false);
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -106,29 +144,64 @@ export default function DashboardPage() {
     }
   }, [account?.address]);
 
-  // Fetch conversations for selected project
-  const fetchConversations = useCallback(async (preserveOptimistic = false) => {
+  // Fetch conversations for selected project (with caching)
+  const fetchConversations = useCallback(async (options: { preserveOptimistic?: boolean; forceRefresh?: boolean } = {}) => {
+    const { preserveOptimistic = false, forceRefresh = false } = options;
+    const projectId = selectedProject?.id;
+
     console.log("[Dashboard] fetchConversations called", {
       hasAccount: !!account?.address,
-      selectedProjectId: selectedProject?.id,
+      selectedProjectId: projectId,
       preserveOptimistic,
+      forceRefresh,
     });
 
     if (!account?.address) return;
 
-    setLoadingConversations(true);
+    // Check cache first (unless force refresh)
+    if (!forceRefresh && !preserveOptimistic) {
+      const cached = getCachedConversations(projectId);
+      if (cached) {
+        console.log("[Dashboard] Using cached conversations", {
+          count: cached.data.length,
+          isValid: cached.isValid,
+        });
+
+        // Use cached data immediately
+        const filteredCached = cached.data.filter(
+          (c) => !recentlyDeletedRef.current.has(c.conversation_id)
+        );
+        setConversations(filteredCached);
+
+        // If cache is still valid, don't fetch from server
+        if (cached.isValid) {
+          console.log("[Dashboard] Cache is valid, skipping server fetch");
+          return;
+        }
+
+        // Cache is stale - fetch in background without showing loading state
+        console.log("[Dashboard] Cache is stale, fetching in background");
+      }
+    }
+
+    // Show loading only if we don't have cached data
+    const cached = getCachedConversations(projectId);
+    if (!cached || forceRefresh) {
+      setLoadingConversations(true);
+    }
+
     try {
       let url = `/api/conversations?walletAddress=${account.address}`;
-      if (selectedProject) {
-        url += `&projectId=${selectedProject.id}`;
+      if (projectId) {
+        url += `&projectId=${projectId}`;
       }
 
-      console.log("[Dashboard] Fetching conversations from:", url);
+      console.log("[Dashboard] Fetching conversations from server:", url);
       const response = await fetch(url, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         const fetchedConversations = data.conversations || [];
-        console.log("[Dashboard] Fetched conversations:", fetchedConversations.length);
+        console.log("[Dashboard] Fetched conversations from server:", fetchedConversations.length);
 
         // Deduplicate conversations by conversation_id
         const uniqueConversations = fetchedConversations.reduce((acc: Conversation[], curr: Conversation) => {
@@ -144,6 +217,9 @@ export default function DashboardPage() {
             unique: uniqueConversations.length,
           });
         }
+
+        // Save to cache
+        setCachedConversations(uniqueConversations, projectId);
 
         if (preserveOptimistic) {
           // Merge with existing conversations, prioritizing fetched ones but keeping optimistic updates
@@ -175,7 +251,7 @@ export default function DashboardPage() {
     } finally {
       setLoadingConversations(false);
     }
-  }, [account?.address, selectedProject]);
+  }, [account?.address, selectedProject, getCachedConversations, setCachedConversations]);
 
   // Track previous project to detect actual changes
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
@@ -187,7 +263,7 @@ export default function DashboardPage() {
     fetchProjects();
   }, [fetchProjects]);
 
-  // Load conversations on mount and when project changes
+  // Load conversations when section is expanded or project changes
   useEffect(() => {
     const currentProjectId = selectedProject?.id || null;
     const prevProjectId = prevProjectIdRef.current;
@@ -196,23 +272,61 @@ export default function DashboardPage() {
       currentProjectId,
       prevProjectId,
       initialLoadDone: initialLoadDoneRef.current,
+      recentSectionExpanded,
       selectedConversation,
     });
 
-    // Fetch conversations (normal refresh)
-    fetchConversations(false);
+    // Only fetch if section is expanded OR if there's a selected conversation (need to show it)
+    const shouldFetch = recentSectionExpanded || selectedConversation;
+
+    if (shouldFetch && !hasLoadedConversationsRef.current) {
+      // First time loading
+      fetchConversations({});
+      hasLoadedConversationsRef.current = true;
+    } else if (shouldFetch) {
+      // Subsequent loads - force refresh if project changed
+      const projectChanged = initialLoadDoneRef.current && prevProjectId !== currentProjectId;
+      if (projectChanged) {
+        fetchConversations({ forceRefresh: true });
+      }
+    }
 
     // Only reset selected conversation when project actually changes (not on mount)
-    if (initialLoadDoneRef.current && prevProjectId !== currentProjectId) {
+    const projectChanged = initialLoadDoneRef.current && prevProjectId !== currentProjectId;
+    if (projectChanged) {
       console.log("[Dashboard] Project changed - resetting selected conversation");
       setSelectedConversation(null);
+      hasLoadedConversationsRef.current = false; // Reset so we reload when section expands
     }
 
     prevProjectIdRef.current = currentProjectId;
     initialLoadDoneRef.current = true;
-    // Only depend on selectedProject?.id to avoid re-running when fetchConversations changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject?.id, account?.address]);
+  }, [selectedProject?.id, account?.address, recentSectionExpanded, selectedConversation]);
+
+  // Keyboard navigation for modals (Escape key to close)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showNewProjectModal) {
+          setShowNewProjectModal(false);
+          setNewProjectName("");
+          setNewProjectDescription("");
+        }
+      }
+    };
+
+    if (showNewProjectModal) {
+      document.addEventListener("keydown", handleKeyDown);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [showNewProjectModal]);
 
   // Create new project
   const handleCreateProject = async () => {
@@ -360,7 +474,7 @@ export default function DashboardPage() {
         // Use a longer delay to allow the server to process the deletion
         // If the conversation still appears, it means the delete didn't work
         setTimeout(() => {
-          fetchConversations(false); // Normal refresh after deletion
+          fetchConversations({ forceRefresh: true }); // Force refresh after deletion to ensure consistency
         }, 1000);
 
         // Clean up the recently deleted tracking after 5 seconds
@@ -409,6 +523,8 @@ export default function DashboardPage() {
     });
 
     setSelectedConversation(conversationId);
+    // Auto-expand the Recent section when a new conversation is created
+    setRecentSectionExpanded(true);
 
     // Optimistically add the new conversation to the list if it doesn't exist
     // Use callback form to ensure we're checking against the latest state
@@ -432,7 +548,7 @@ export default function DashboardPage() {
     // Use preserveOptimistic=true to keep the optimistic update if server hasn't processed it yet
     // Use a longer delay to allow the server to fully process the new conversation
     setTimeout(() => {
-      fetchConversations(true); // preserveOptimistic = true
+      fetchConversations({ preserveOptimistic: true }); // Keep optimistic updates while syncing with server
     }, 1500);
   };
 
@@ -449,6 +565,15 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full flex overflow-hidden bg-background">
+      {/* Mobile Sidebar Backdrop */}
+      {!sidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/50 z-10 md:hidden transition-opacity"
+          onClick={() => setSidebarCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
       <div
         className={`${sidebarCollapsed ? "w-0 md:w-0" : "w-64 sm:w-72"
@@ -498,38 +623,87 @@ export default function DashboardPage() {
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto scroll-smooth px-3 space-y-6">
 
-          {/* Recent Section */}
+          {/* Recent Section - Collapsible */}
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground mb-2 px-2 uppercase tracking-wider">Recent</h3>
-            <div className="space-y-1">
-              {loadingConversations ? (
-                <div className="px-2 text-xs text-muted-foreground">Loading...</div>
-              ) : conversations.length === 0 ? (
-                <div className="px-2 text-xs text-muted-foreground">No recent chats</div>
-              ) : (
-                conversations.slice(0, 5).map((conv) => (
-                  <div key={conv.conversation_id} className="group relative">
-                    <button
-                      onClick={() => setSelectedConversation(conv.conversation_id)}
-                      className={`w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm flex items-center gap-2 truncate ${selectedConversation === conv.conversation_id ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
-                        }`}
-                    >
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                      </svg>
-                      <span className="truncate">{conv.first_message || "New Chat"}</span>
-                    </button>
-                    <button
-                      onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <svg className="w-3 h-3 text-muted-foreground hover:text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+            <button
+              onClick={() => setRecentSectionExpanded(!recentSectionExpanded)}
+              className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-muted/50 rounded-lg transition-colors group"
+            >
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
+                Recent
+                {conversations.length > 0 && (
+                  <span className="ml-1.5 text-[10px] font-normal opacity-60">({conversations.length})</span>
+                )}
+              </h3>
+              <svg
+                className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${recentSectionExpanded ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Collapsible content */}
+            <div
+              className={`overflow-hidden transition-all duration-200 ${recentSectionExpanded ? "max-h-[500px] opacity-100 mt-1" : "max-h-0 opacity-0"}`}
+            >
+              <div className="space-y-1">
+                {loadingConversations ? (
+                  <div className="px-2 py-4 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
+                    <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
                   </div>
-                ))
-              )}
+                ) : conversations.length === 0 ? (
+                  <div className="px-2 text-xs text-muted-foreground">No recent chats</div>
+                ) : (
+                  <>
+                    {(showAllConversations ? conversations : conversations.slice(0, 5)).map((conv) => (
+                      <div key={conv.conversation_id} className="group relative">
+                        <button
+                          onClick={() => setSelectedConversation(conv.conversation_id)}
+                          title={conv.first_message || "New Chat"}
+                          className={`w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm flex items-center gap-2 truncate ${selectedConversation === conv.conversation_id ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
+                            }`}
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                          </svg>
+                          <span className="truncate">{conv.first_message || "New Chat"}</span>
+                        </button>
+                        <button
+                          onClick={(e) => openDeleteConversationDialog(conv.conversation_id, e)}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg className="w-3 h-3 text-muted-foreground hover:text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    {conversations.length > 5 && (
+                      <button
+                        onClick={() => setShowAllConversations(!showAllConversations)}
+                        className="w-full text-left px-3 py-2 text-xs text-aura-purple hover:text-aura-cyan hover:bg-muted/50 rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <svg
+                          className={`w-3 h-3 transition-transform ${showAllConversations ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {showAllConversations
+                          ? "Show less"
+                          : `Show ${conversations.length - 5} more`}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -624,32 +798,51 @@ export default function DashboardPage() {
 
       {/* New Project Modal */}
       {showNewProjectModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold text-foreground mb-4">Create New Project</h2>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={(e) => {
+            // Close when clicking backdrop (not modal content)
+            if (e.target === e.currentTarget) {
+              setShowNewProjectModal(false);
+              setNewProjectName("");
+              setNewProjectDescription("");
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
+          <div
+            className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4 animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="modal-title" className="text-xl font-bold text-foreground mb-4">Create New Project</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                <label htmlFor="project-name" className="block text-sm font-medium text-foreground mb-1">
                   Project Name
                 </label>
                 <input
+                  id="project-name"
                   type="text"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   placeholder="My AI Project"
-                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-aura-purple"
+                  autoFocus
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-aura-purple focus:ring-1 focus:ring-aura-purple/50"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                <label htmlFor="project-description" className="block text-sm font-medium text-foreground mb-1">
                   Description (optional)
                 </label>
                 <textarea
+                  id="project-description"
                   value={newProjectDescription}
                   onChange={(e) => setNewProjectDescription(e.target.value)}
                   placeholder="What is this project about?"
                   rows={3}
-                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-aura-purple resize-none"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-aura-purple focus:ring-1 focus:ring-aura-purple/50 resize-none"
                 />
               </div>
             </div>

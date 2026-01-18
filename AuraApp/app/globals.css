@@ -252,3 +252,45 @@
     }
   }
 }
+
+/* Accessibility: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin,
+  .animate-float,
+  .animate-gradient,
+  .animate-fadeIn,
+  .animate-fadeInUp,
+  .animate-glow-pulse,
+  .bg-aura-animated {
+    animation: none !important;
+  }
+
+  /* Disable gradient animations but keep gradients visible */
+  .bg-aura-animated {
+    background-size: 100% 100% !important;
+  }
+
+  .animate-gradient {
+    background-position: 0% 50% !important;
+  }
+
+  /* Keep hover states but remove transform animations */
+  .btn-aura-primary:hover {
+    transform: none !important;
+  }
+
+  .group-hover\:scale-110 {
+    transform: none !important;
+  }
+}
