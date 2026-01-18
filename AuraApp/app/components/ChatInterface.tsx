@@ -172,6 +172,7 @@ export function ChatInterface({
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(
     initialConversationId || null
   );
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Microphone recording state
@@ -502,6 +503,7 @@ export function ChatInterface({
       return;
     }
 
+    setLoadingHistory(true);
     try {
       console.log("[ChatInterface] Fetching history from server...");
       const response = await fetch(
@@ -516,6 +518,8 @@ export function ChatInterface({
       }
     } catch (error) {
       console.error("[ChatInterface] Failed to load conversation history:", error);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -1115,7 +1119,8 @@ export function ChatInterface({
             {/* Recording indicator */}
             {recordingState === "recording" && (
               <div className="absolute top-full left-0 right-0 mt-2 text-center">
-                <span className="text-sm text-red-500 font-medium bg-red-50 px-2 py-1 rounded-full">
+                <span className="text-sm text-red-400 font-medium bg-red-500/20 border border-red-500/30 px-3 py-1.5 rounded-full inline-flex items-center gap-2">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                   Recording: {formatTime(recordingTime)}
                 </span>
               </div>
@@ -1147,7 +1152,20 @@ export function ChatInterface({
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 min-h-0 scroll-smooth">
         <div className="max-w-4xl mx-auto space-y-6">
-          {messages.map((message, index) => (
+          {/* Loading indicator when switching conversations */}
+          {loadingHistory && (
+            <div className="flex justify-center items-center py-12">
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-aura-purple rounded-full animate-bounce" />
+                  <div className="w-3 h-3 bg-aura-purple/70 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
+                  <div className="w-3 h-3 bg-aura-purple/40 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
+                </div>
+                <span className="text-sm text-muted-foreground">Loading conversation...</span>
+              </div>
+            </div>
+          )}
+          {!loadingHistory && messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
@@ -1264,7 +1282,20 @@ export function ChatInterface({
                   )}
 
                   {message.paymentRequest && (
-                    <div className="mt-3 pt-2 border-t border-border/20">
+                    <div className="mt-4 p-4 bg-gradient-to-r from-aura-purple/10 to-aura-cyan/10 border border-aura-purple/30 rounded-xl shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 rounded-full bg-aura-gradient flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+                            <path d="M12 18V6" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Payment Required</p>
+                          <p className="text-xs text-muted-foreground">Complete payment to continue</p>
+                        </div>
+                      </div>
                       <PaymentButton
                         accepts={message.paymentAccepts}
                         defaultNetwork={message.paymentDefaultNetwork}
@@ -1333,7 +1364,7 @@ export function ChatInterface({
               </div>
             </div>
           ))}
-          {loading && (
+          {loading && !loadingHistory && (
             <div className="flex justify-start">
               <div className="bg-muted rounded-2xl rounded-bl-none px-4 py-3 flex items-center space-x-2">
                 <div className="w-2 h-2 bg-aura-purple/40 rounded-full animate-bounce" />
