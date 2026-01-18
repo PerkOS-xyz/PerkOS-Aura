@@ -34,6 +34,8 @@
     "@perkos/middleware-x402": "^1.2.2",
     "@perkos/schema-validation": "^1.0.0",
     "@perkos/service-ai": "^1.0.0",
+    "@perkos/ui-payment": "^1.0.0",
+    "@perkos/ui-payment-thirdweb": "^1.0.0",
     "@perkos/util-config": "^1.0.0",
     "@perkos/util-errors": "^1.0.0",
     "@perkos/util-tokens": "^1.0.0",

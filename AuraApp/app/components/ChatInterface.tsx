@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
-import { PaymentButton, type AcceptOption } from "./PaymentButton";
+import { PaymentButton, type AcceptOption } from "@perkos/ui-payment";
+import { useThirdwebWallet } from "@perkos/ui-payment-thirdweb";
 import { ServiceSelector, type ServiceSelection } from "./ServiceSelector";
 import type { PaymentRequirements } from "@/lib/utils/x402-payment";
 
@@ -352,6 +353,7 @@ export function ChatInterface({
   onConversationChange
 }: ChatInterfaceProps) {
   const account = useActiveAccount();
+  const wallet = useThirdwebWallet();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1557,9 +1559,9 @@ export function ChatInterface({
                         </div>
                       </div>
                       <PaymentButton
-                        accepts={message.paymentAccepts}
+                        wallet={wallet}
+                        accepts={message.paymentAccepts || []}
                         defaultNetwork={message.paymentDefaultNetwork}
-                        requirements={message.paymentRequest}
                         onPaymentSigned={async (envelope) => {
                           // Check if this is a chat retry action
                           if (message.paymentRequest?.paymentId && pendingActionsRef.current.has(message.paymentRequest.paymentId)) {
