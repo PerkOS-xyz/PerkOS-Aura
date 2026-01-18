@@ -9,6 +9,8 @@ interface ServiceOption {
     icon: React.ReactNode;
     category: "Vision & Audio" | "NLP" | "Business" | "Developer" | "Advanced";
     promptTemplate: string | (() => string);
+    endpoint?: string; // Paid API endpoint (if any)
+    priceUsd?: number; // Price in USD (for display)
 }
 
 // Random image generation prompts for variety
@@ -34,8 +36,16 @@ function getRandomImagePrompt(): string {
     return imagePrompts[Math.floor(Math.random() * imagePrompts.length)];
 }
 
+export interface ServiceSelection {
+    prompt: string;
+    endpoint?: string;
+    priceUsd?: number;
+    serviceId: string;
+    serviceTitle: string;
+}
+
 interface ServiceSelectorProps {
-    onSelect: (prompt: string) => void;
+    onSelect: (selection: ServiceSelection) => void;
 }
 
 export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
@@ -49,6 +59,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Get detailed insights from visuals",
             category: "Vision & Audio",
             promptTemplate: "Analyze this image and describe what you see in detail.",
+            endpoint: "/api/ai/analyze",
+            priceUsd: 0.05,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -62,6 +74,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Create images from text descriptions",
             category: "Vision & Audio",
             promptTemplate: getRandomImagePrompt,
+            endpoint: "/api/ai/generate",
+            priceUsd: 0.15,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -74,6 +88,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Convert speech to text",
             category: "Vision & Audio",
             promptTemplate: "Transcribe the following audio file:",
+            endpoint: "/api/ai/transcribe",
+            priceUsd: 0.04,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -86,6 +102,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Turn text into lifelike speech",
             category: "Vision & Audio",
             promptTemplate: "Generate speech for the following text: 'Hello, welcome to PerkOS AI services.'",
+            endpoint: "/api/ai/synthesize",
+            priceUsd: 0.04,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
@@ -100,6 +118,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Condense long content into summaries",
             category: "NLP",
             promptTemplate: "Summarize the following text in 3 bullet points:\n\n",
+            endpoint: "/api/ai/summarize",
+            priceUsd: 0.03,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
@@ -112,6 +132,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Translate text between languages",
             category: "NLP",
             promptTemplate: "Translate the following text to Spanish:\n\n",
+            endpoint: "/api/ai/translate",
+            priceUsd: 0.03,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
@@ -124,6 +146,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Detect emotion and tone in text",
             category: "NLP",
             promptTemplate: "Analyze the sentiment of this text:\n\n",
+            endpoint: "/api/ai/sentiment",
+            priceUsd: 0.02,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -136,6 +160,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Check text for sensitive content",
             category: "NLP",
             promptTemplate: "Check if the following text contains any harmful content:\n\n",
+            endpoint: "/api/ai/moderate",
+            priceUsd: 0.01,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -150,6 +176,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Draft professional emails specifically",
             category: "Business",
             promptTemplate: "Write a professional email to a client about project delays due to technical issues.",
+            endpoint: "/api/ai/email/generate",
+            priceUsd: 0.02,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -162,6 +190,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Create compelling marketing copy",
             category: "Business",
             promptTemplate: "Write a compelling product description for a smart water bottle that tracks hydration.",
+            endpoint: "/api/ai/product/describe",
+            priceUsd: 0.03,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -174,6 +204,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Optimize content for search engines",
             category: "Business",
             promptTemplate: "Optimize the following blog post title and description for SEO keywords 'AI services' and 'automation':\n\n",
+            endpoint: "/api/ai/seo/optimize",
+            priceUsd: 0.05,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -188,6 +220,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Write code functions and snippets",
             category: "Developer",
             promptTemplate: "Write a React component that displays a countdown timer.",
+            endpoint: "/api/ai/code/generate",
+            priceUsd: 0.08,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -200,6 +234,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Analyze code for bugs and improvements",
             category: "Developer",
             promptTemplate: "Review this code for potential security vulnerabilities and performance issues:\n\n",
+            endpoint: "/api/ai/code/review",
+            priceUsd: 0.05,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -212,6 +248,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Convert natural language to SQL queries",
             category: "Developer",
             promptTemplate: "Write a SQL query to find the top 5 customers by total purchase amount in the last month.",
+            endpoint: "/api/ai/sql/generate",
+            priceUsd: 0.03,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
@@ -224,6 +262,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Create patterns for text matching",
             category: "Developer",
             promptTemplate: "Write a Regular Expression to validate an email address.",
+            endpoint: "/api/ai/regex/generate",
+            priceUsd: 0.02,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
@@ -238,6 +278,8 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             description: "Extract text from images",
             category: "Advanced",
             promptTemplate: "Extract all text from this image and format it as a table.",
+            endpoint: "/api/ai/ocr",
+            priceUsd: 0.04,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -277,12 +319,25 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
                             const prompt = typeof service.promptTemplate === "function"
                                 ? service.promptTemplate()
                                 : service.promptTemplate;
-                            onSelect(prompt);
+                            onSelect({
+                                prompt,
+                                endpoint: service.endpoint,
+                                priceUsd: service.priceUsd,
+                                serviceId: service.id,
+                                serviceTitle: service.title,
+                            });
                         }}
                         className="flex flex-col items-start p-4 h-full bg-card border border-border hover:border-aura-purple/50 hover:shadow-lg hover:shadow-aura-purple/10 rounded-xl transition-all text-left group"
                     >
-                        <div className="p-2 bg-muted rounded-lg text-aura-purple mb-3 group-hover:scale-110 transition-transform duration-300">
-                            {service.icon}
+                        <div className="flex items-center justify-between w-full mb-3">
+                            <div className="p-2 bg-muted rounded-lg text-aura-purple group-hover:scale-110 transition-transform duration-300">
+                                {service.icon}
+                            </div>
+                            {service.priceUsd && (
+                                <span className="text-xs font-medium text-aura-cyan bg-aura-cyan/10 px-2 py-0.5 rounded-full">
+                                    ${service.priceUsd.toFixed(2)}
+                                </span>
+                            )}
                         </div>
                         <h3 className="font-semibold text-foreground mb-1">{service.title}</h3>
                         <p className="text-xs text-muted-foreground line-clamp-2">{service.description}</p>
