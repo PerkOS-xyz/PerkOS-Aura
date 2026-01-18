@@ -3,8 +3,194 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { PaymentButton, type AcceptOption } from "./PaymentButton";
-import { ServiceSelector } from "./ServiceSelector";
+import { ServiceSelector, type ServiceSelection } from "./ServiceSelector";
 import type { PaymentRequirements } from "@/lib/utils/x402-payment";
+
+// Pending paid service action that needs x402 payment
+interface PendingPaidService {
+  selection: ServiceSelection;
+  inputText: string;
+  messageIndex: number;
+}
+
+// Helper to build request body for specific AI service endpoints
+function buildServiceRequestBody(serviceId: string, text: string): Record<string, unknown> {
+  switch (serviceId) {
+    // Vision & Audio
+    case "analyze_image":
+      return { imageUrl: "", prompt: text }; // Image URL will be added separately
+    case "generate_image":
+      return { prompt: text };
+    case "transcribe_audio":
+      return { audioUrl: "" }; // Audio URL will be added separately
+    case "synthesize_speech":
+      return { text };
+
+    // NLP Services
+    case "summarize":
+      return { text, length: "medium" };
+    case "translate":
+      // Try to extract target language from prompt, default to Spanish
+      const langMatch = text.match(/(?:to|into)\s+(\w+)/i);
+      return { text, targetLang: langMatch?.[1] || "Spanish" };
+    case "sentiment":
+      return { text };
+    case "moderate":
+      return { text };
+
+    // Business Tools
+    case "email":
+      return { keyPoints: text, tone: "professional" };
+    case "product":
+      return { productName: "Product", features: text };
+    case "seo":
+      // Extract keywords from the prompt if mentioned
+      const keywordMatch = text.match(/keywords?\s*['":]?\s*['"](.*?)['"]/i);
+      const keywords = keywordMatch
+        ? keywordMatch[1].split(/[,;]\s*/).map(k => k.replace(/['"]|and\s*/gi, "").trim())
+        : ["AI", "automation"];
+      return { content: text, keywords };
+
+    // Developer Tools
+    case "code":
+      return { prompt: text, language: "typescript" };
+    case "code_review":
+      return { code: text };
+    case "sql":
+      return { prompt: text, dialect: "postgresql" };
+    case "regex":
+      return { description: text };
+
+    // Advanced
+    case "ocr":
+      return { imageUrl: "" }; // Image URL will be added separately
+
+    default:
+      // Generic fallback - send text in multiple common field names
+      return { text, content: text, prompt: text, input: text };
+  }
+}
+
+// Helper to format paid service responses into readable text
+function formatPaidServiceResponse(serviceId: string, data: any): string {
+  // Handle nested data structure (some endpoints return { success, data: {...} })
+  const result = data.data || data;
+
+  switch (serviceId) {
+    case "summarize":
+      return result.summary || result.text || JSON.stringify(result);
+
+    case "translate":
+      const detected = data.detectedLanguage || result.detectedLanguage;
+      const translation = data.translation || result.translation || result.text;
+      return detected
+        ? `**Translation** (detected: ${detected}):\n\n${translation}`
+        : `**Translation:**\n\n${translation}`;
+
+    case "sentiment":
+      const sentiment = result.sentiment || result.label || "Unknown";
+      const confidence = result.confidence || result.score;
+      const emotions = result.emotions;
+      let sentimentText = `**Sentiment Analysis:**\n\n• **Overall:** ${sentiment}`;
+      if (confidence) sentimentText += ` (${(confidence * 100).toFixed(1)}% confidence)`;
+      if (emotions && typeof emotions === "object") {
+        sentimentText += "\n• **Emotions:**";
+        for (const [emotion, score] of Object.entries(emotions)) {
+          sentimentText += `\n  - ${emotion}: ${((score as number) * 100).toFixed(1)}%`;
+        }
+      }
+      return sentimentText;
+
+    case "moderate":
+      const isSafe = result.safe ?? result.isSafe ?? !result.flagged;
+      const categories = result.categories || result.flags;
+      let moderationText = `**Content Moderation:**\n\n• **Status:** ${isSafe ? "✅ Safe" : "⚠️ Flagged"}`;
+      if (categories && typeof categories === "object") {
+        moderationText += "\n• **Categories:**";
+        for (const [category, flagged] of Object.entries(categories)) {
+          moderationText += `\n  - ${category}: ${flagged ? "⚠️ Flagged" : "✅ OK"}`;
+        }
+      }
+      return moderationText;
+
+    case "email":
+      return `**Generated Email:**\n\n${result.email || result.content || result.text || JSON.stringify(result)}`;
+
+    case "product":
+      return `**Product Description:**\n\n${result.description || result.content || result.text || JSON.stringify(result)}`;
+
+    case "seo":
+      let seoText = "**SEO Optimization Results:**\n\n";
+      if (result.title) seoText += `• **Optimized Title:** ${result.title}\n`;
+      if (result.description) seoText += `• **Meta Description:** ${result.description}\n`;
+      if (result.keywords && Array.isArray(result.keywords)) {
+        seoText += `• **Keywords:** ${result.keywords.join(", ")}\n`;
+      }
+      if (result.suggestions && Array.isArray(result.suggestions)) {
+        seoText += "\n**Suggestions:**\n";
+        result.suggestions.forEach((s: string, i: number) => {
+          seoText += `${i + 1}. ${s}\n`;
+        });
+      }
+      return seoText.trim() || JSON.stringify(result);
+
+    case "code":
+      const language = result.language || "typescript";
+      const code = result.code || result.content || result.text;
+      return `**Generated Code (${language}):**\n\n\`\`\`${language}\n${code}\n\`\`\``;
+
+    case "code_review":
+      let reviewText = "**Code Review:**\n\n";
+      if (result.issues && Array.isArray(result.issues)) {
+        reviewText += "**Issues Found:**\n";
+        result.issues.forEach((issue: any, i: number) => {
+          reviewText += `${i + 1}. ${typeof issue === "string" ? issue : issue.description || JSON.stringify(issue)}\n`;
+        });
+      }
+      if (result.suggestions && Array.isArray(result.suggestions)) {
+        reviewText += "\n**Suggestions:**\n";
+        result.suggestions.forEach((s: string, i: number) => {
+          reviewText += `${i + 1}. ${s}\n`;
+        });
+      }
+      if (result.summary) reviewText += `\n**Summary:** ${result.summary}`;
+      return reviewText.trim() || result.review || JSON.stringify(result);
+
+    case "sql":
+      const sql = result.query || result.sql || result.code || result.text;
+      return `**Generated SQL Query:**\n\n\`\`\`sql\n${sql}\n\`\`\``;
+
+    case "regex":
+      const pattern = result.pattern || result.regex || result.expression;
+      const explanation = result.explanation || result.description;
+      let regexText = `**Generated Regex:**\n\n\`${pattern}\``;
+      if (explanation) regexText += `\n\n**Explanation:** ${explanation}`;
+      return regexText;
+
+    case "generate_image":
+      // Image generation is handled separately with attachmentPreview
+      return result.revisedPrompt
+        ? `Image generated! (Prompt: ${result.revisedPrompt})`
+        : "Image generated successfully!";
+
+    case "analyze_image":
+      return result.analysis || result.description || result.text || JSON.stringify(result);
+
+    case "transcribe_audio":
+      return `**Transcription:**\n\n${result.transcription || result.text || JSON.stringify(result)}`;
+
+    case "synthesize_speech":
+      // Audio synthesis is handled separately with attachmentPreview
+      return "Audio synthesized successfully!";
+
+    case "ocr":
+      return `**Extracted Text:**\n\n${result.text || result.content || JSON.stringify(result)}`;
+
+    default:
+      // Generic fallback - try common response fields
+      return result.text || result.content || result.result || result.response || JSON.stringify(result);
+  }
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -186,6 +372,11 @@ export function ChatInterface({
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [attachedPreview, setAttachedPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Selected paid service (from ServiceSelector)
+  const [selectedPaidService, setSelectedPaidService] = useState<ServiceSelection | null>(null);
+  // Pending paid services waiting for x402 payment
+  const pendingPaidServicesRef = useRef<Map<string, PendingPaidService>>(new Map());
 
   // Pending actions waiting for payment
   const pendingActionsRef = useRef<Map<string, {
@@ -803,6 +994,9 @@ export function ChatInterface({
       let method = "POST";
       let headers: Record<string, string> = { "Content-Type": "application/json" };
 
+      // Check if a paid service from ServiceSelector was selected
+      const isPaidServiceCall = selectedPaidService?.endpoint && !fileToSend;
+
       if (fileToSend) {
         // Upload file first
         const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
@@ -817,6 +1011,21 @@ export function ChatInterface({
           projectId: projectId || null
         };
         // fetch call below will use url/body
+      } else if (isPaidServiceCall && selectedPaidService) {
+        // Route to paid AI service endpoint (x402 protected)
+        url = selectedPaidService.endpoint;
+        // Build endpoint-specific request body using helper function
+        body = {
+          ...buildServiceRequestBody(selectedPaidService.serviceId, messageText),
+          walletAddress: account.address,
+        };
+        console.log("[ChatInterface] Routing to paid service:", {
+          endpoint: url,
+          serviceId: selectedPaidService.serviceId,
+          priceUsd: selectedPaidService.priceUsd,
+          body,
+        });
+        // Note: Don't clear selectedPaidService yet - we need it for response formatting
       } else {
         url = "/api/chat";
         body = {
@@ -887,6 +1096,16 @@ export function ChatInterface({
         throw new Error(errorMsg);
       }
 
+      // Check if this was a paid service call (selectedPaidService still set)
+      const wasPaidServiceCall = !!selectedPaidService;
+      const paidServiceId = selectedPaidService?.serviceId;
+      const paidServiceTitle = selectedPaidService?.serviceTitle;
+
+      // Clear the selected paid service now that we have the response
+      if (selectedPaidService) {
+        setSelectedPaidService(null);
+      }
+
       // Update conversation ID and notify parent to add to sidebar
       if (data.conversationId) {
         const isNewConversation = !currentConversationId;
@@ -919,49 +1138,82 @@ export function ChatInterface({
         }
       }
 
-      // Parse response for payment requests
+      // Handle response based on whether it was a paid service call or regular chat
+      let responseContent: string;
+      let attachmentPreview: string | undefined;
+      let attachmentType: "image" | "audio" | undefined;
       let paymentRequest: (PaymentRequirements & { paymentId: string }) | undefined;
-      let responseContent = data.response;
 
-      // Check if response contains payment request (JSON format)
-      try {
-        // More flexible regex: handles optional whitespace, different newline patterns
-        // Matches: ```json followed by JSON content and closing ```
-        const paymentMatch = data.response.match(/```json\s*([\s\S]*?)\s*```/);
-        console.log("[ChatInterface] Payment JSON match:", {
-          hasMatch: !!paymentMatch,
-          rawResponse: data.response?.substring(0, 200),
+      if (wasPaidServiceCall && paidServiceId) {
+        // Paid service response - format using helper
+        console.log("[ChatInterface] Formatting paid service response:", {
+          serviceId: paidServiceId,
+          serviceTitle: paidServiceTitle,
+          data,
         });
 
-        if (paymentMatch) {
-          const jsonContent = paymentMatch[1].trim();
-          console.log("[ChatInterface] Parsing JSON content:", jsonContent.substring(0, 200));
-          const paymentData = JSON.parse(jsonContent);
-
-          if (paymentData.paymentRequest) {
-            const pr = paymentData.paymentRequest;
-            console.log("[ChatInterface] Found paymentRequest:", pr);
-
-            // Store the pending action so we can execute it after payment
-            if (pr.paymentId && pr.endpoint && pr.requestData) {
-              pendingActionsRef.current.set(pr.paymentId, {
-                url: pr.endpoint,
-                method: pr.method || "POST",
-                headers: { "Content-Type": "application/json" },
-                body: pr.requestData,
-                description: pr.description || "AI Service Request",
-              });
-              console.log("[ChatInterface] Stored pending action for paymentId:", pr.paymentId);
-            }
-
-            paymentRequest = pr;
-            // Remove the JSON block from response content
-            responseContent = data.response.replace(/```json\s*[\s\S]*?\s*```/g, "").trim();
+        // Handle special cases: image generation and speech synthesis have attachments
+        const result = data.data || data;
+        if (paidServiceId === "generate_image") {
+          if (result.base64) {
+            attachmentPreview = `data:image/png;base64,${result.base64}`;
+            attachmentType = "image";
+          } else if (result.url) {
+            attachmentPreview = result.url;
+            attachmentType = "image";
+          }
+        } else if (paidServiceId === "synthesize_speech") {
+          if (result.audio || result.audioUrl) {
+            attachmentPreview = result.audio || result.audioUrl;
+            attachmentType = "audio";
           }
         }
-      } catch (parseError) {
-        // Not a payment request or invalid JSON
-        console.log("[ChatInterface] Payment JSON parse failed:", parseError);
+
+        responseContent = formatPaidServiceResponse(paidServiceId, data);
+      } else {
+        // Regular chat response - use existing logic
+        responseContent = data.response;
+
+        // Check if response contains payment request (JSON format)
+        try {
+          // More flexible regex: handles optional whitespace, different newline patterns
+          // Matches: ```json followed by JSON content and closing ```
+          const paymentMatch = data.response?.match(/```json\s*([\s\S]*?)\s*```/);
+          console.log("[ChatInterface] Payment JSON match:", {
+            hasMatch: !!paymentMatch,
+            rawResponse: data.response?.substring(0, 200),
+          });
+
+          if (paymentMatch) {
+            const jsonContent = paymentMatch[1].trim();
+            console.log("[ChatInterface] Parsing JSON content:", jsonContent.substring(0, 200));
+            const paymentData = JSON.parse(jsonContent);
+
+            if (paymentData.paymentRequest) {
+              const pr = paymentData.paymentRequest;
+              console.log("[ChatInterface] Found paymentRequest:", pr);
+
+              // Store the pending action so we can execute it after payment
+              if (pr.paymentId && pr.endpoint && pr.requestData) {
+                pendingActionsRef.current.set(pr.paymentId, {
+                  url: pr.endpoint,
+                  method: pr.method || "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: pr.requestData,
+                  description: pr.description || "AI Service Request",
+                });
+                console.log("[ChatInterface] Stored pending action for paymentId:", pr.paymentId);
+              }
+
+              paymentRequest = pr;
+              // Remove the JSON block from response content
+              responseContent = data.response.replace(/```json\s*[\s\S]*?\s*```/g, "").trim();
+            }
+          }
+        } catch (parseError) {
+          // Not a payment request or invalid JSON
+          console.log("[ChatInterface] Payment JSON parse failed:", parseError);
+        }
       }
 
       // Add assistant response
@@ -970,6 +1222,8 @@ export function ChatInterface({
         content: responseContent,
         timestamp: new Date().toISOString(),
         paymentRequest,
+        attachmentPreview,
+        attachmentType,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -1138,8 +1392,14 @@ export function ChatInterface({
 
           {/* Service Selector */}
           <div className="pt-8">
-            <ServiceSelector onSelect={(prompt) => {
-              setInput(prompt);
+            <ServiceSelector onSelect={(selection) => {
+              setInput(selection.prompt);
+              // Track if this is a paid service that needs x402 payment
+              if (selection.endpoint) {
+                setSelectedPaidService(selection);
+              } else {
+                setSelectedPaidService(null);
+              }
             }} />
           </div>
         </div>
