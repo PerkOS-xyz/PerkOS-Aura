@@ -117,7 +117,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "Summarize Text",
             description: "Condense long content into summaries",
             category: "NLP",
-            promptTemplate: "Summarize the following text in 3 bullet points:\n\n",
+            promptTemplate: "Summarize this text in 3 bullet points:\n\nArtificial intelligence has transformed numerous industries, from healthcare to finance. Machine learning algorithms can now diagnose diseases with remarkable accuracy, predict market trends, and automate complex tasks. However, these advancements also raise important ethical questions about privacy, job displacement, and algorithmic bias that society must address.",
             endpoint: "/api/ai/summarize",
             priceUsd: 0.03,
             icon: (
@@ -131,7 +131,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "Translate",
             description: "Translate text between languages",
             category: "NLP",
-            promptTemplate: "Translate the following text to Spanish:\n\n",
+            promptTemplate: "Translate this text to Spanish:\n\nWelcome to our platform! We're excited to help you build amazing applications with AI-powered features.",
             endpoint: "/api/ai/translate",
             priceUsd: 0.03,
             icon: (
@@ -145,7 +145,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "Sentiment Analysis",
             description: "Detect emotion and tone in text",
             category: "NLP",
-            promptTemplate: "Analyze the sentiment of this text:\n\n",
+            promptTemplate: "Analyze the sentiment of this text:\n\nI absolutely love this new feature! It makes my workflow so much easier and saves me hours every week. The team did an amazing job!",
             endpoint: "/api/ai/sentiment",
             priceUsd: 0.02,
             icon: (
@@ -159,12 +159,40 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "Content Moderation",
             description: "Check text for sensitive content",
             category: "NLP",
-            promptTemplate: "Check if the following text contains any harmful content:\n\n",
+            promptTemplate: "Check if this text contains harmful content:\n\nThis product is amazing and will change your life forever! Buy now or regret it!",
             endpoint: "/api/ai/moderate",
             priceUsd: 0.01,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            )
+        },
+        {
+            id: "simplify",
+            title: "Simplify Text",
+            description: "Make complex text easier to read",
+            category: "NLP",
+            promptTemplate: "Simplify this text for a general audience:\n\nThe implementation of quantum computing paradigms necessitates a fundamental reconceptualization of classical algorithmic methodologies.",
+            endpoint: "/api/ai/simplify",
+            priceUsd: 0.02,
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            )
+        },
+        {
+            id: "extract",
+            title: "Extract Entities",
+            description: "Find names, places, dates in text",
+            category: "NLP",
+            promptTemplate: "Extract all entities (people, places, dates, organizations) from this text:\n\nApple CEO Tim Cook announced at WWDC 2024 in San Jose that iOS 18 will launch on September 16th.",
+            endpoint: "/api/ai/extract",
+            priceUsd: 0.03,
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
                 </svg>
             )
         },
@@ -203,7 +231,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "SEO Optimization",
             description: "Optimize content for search engines",
             category: "Business",
-            promptTemplate: "Optimize the following blog post title and description for SEO keywords 'AI services' and 'automation':\n\n",
+            promptTemplate: "Optimize this content for SEO with keywords 'AI services' and 'automation':\n\nTitle: How to Use AI in Your Business\nDescription: Learn about artificial intelligence tools that can help your company.",
             endpoint: "/api/ai/seo/optimize",
             priceUsd: 0.05,
             icon: (
@@ -233,7 +261,7 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "Code Review",
             description: "Analyze code for bugs and improvements",
             category: "Developer",
-            promptTemplate: "Review this code for potential security vulnerabilities and performance issues:\n\n",
+            promptTemplate: "Review this code for bugs and security issues:\n\nfunction login(user, pass) {\n  const query = `SELECT * FROM users WHERE username='${user}' AND password='${pass}'`;\n  return db.execute(query);\n}",
             endpoint: "/api/ai/code/review",
             priceUsd: 0.05,
             icon: (
@@ -277,12 +305,40 @@ export function ServiceSelector({ onSelect }: ServiceSelectorProps) {
             title: "OCR Extraction",
             description: "Extract text from images",
             category: "Advanced",
-            promptTemplate: "Extract all text from this image and format it as a table.",
+            promptTemplate: "[Attach an image] Extract all text from this image and format it clearly.",
             endpoint: "/api/ai/ocr",
             priceUsd: 0.04,
             icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            )
+        },
+        {
+            id: "docs",
+            title: "Generate Docs",
+            description: "Create API documentation from code",
+            category: "Developer",
+            promptTemplate: "Generate API documentation for this function:\n\nfunction calculateTotal(items: CartItem[], discount?: number): { subtotal: number; tax: number; total: number }",
+            endpoint: "/api/ai/docs/generate",
+            priceUsd: 0.05,
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+            )
+        },
+        {
+            id: "quiz",
+            title: "Generate Quiz",
+            description: "Create quiz questions on any topic",
+            category: "Advanced",
+            promptTemplate: "Generate 5 multiple-choice quiz questions about:\n\nThe history of artificial intelligence and machine learning",
+            endpoint: "/api/ai/quiz/generate",
+            priceUsd: 0.05,
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             )
         },
