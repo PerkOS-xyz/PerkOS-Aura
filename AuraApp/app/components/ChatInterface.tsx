@@ -38,6 +38,10 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
       return { text };
     case "moderate":
       return { text };
+    case "simplify":
+      return { text, level: "general" }; // Reading level: general, child, expert
+    case "extract":
+      return { text };
 
     // Business Tools
     case "email":
@@ -61,10 +65,16 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
       return { prompt: text, dialect: "postgresql" };
     case "regex":
       return { description: text };
+    case "docs":
+      return { code: text, format: "markdown" };
 
     // Advanced
     case "ocr":
       return { imageUrl: "" }; // Image URL will be added separately
+    case "quiz":
+      // Extract number of questions if mentioned, default to 5
+      const numMatch = text.match(/(\d+)\s*(?:question|quiz)/i);
+      return { topic: text, numQuestions: numMatch ? parseInt(numMatch[1]) : 5 };
 
     default:
       // Generic fallback - send text in multiple common field names
@@ -113,6 +123,29 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
         }
       }
       return moderationText;
+
+    case "simplify":
+      return `**Simplified Text:**\n\n${result.simplified || result.text || result.content || JSON.stringify(result)}`;
+
+    case "extract":
+      let extractText = "**Extracted Entities:**\n\n";
+      const entities = result.entities || result;
+      if (entities.people && Array.isArray(entities.people)) {
+        extractText += `• **People:** ${entities.people.join(", ")}\n`;
+      }
+      if (entities.places && Array.isArray(entities.places)) {
+        extractText += `• **Places:** ${entities.places.join(", ")}\n`;
+      }
+      if (entities.organizations && Array.isArray(entities.organizations)) {
+        extractText += `• **Organizations:** ${entities.organizations.join(", ")}\n`;
+      }
+      if (entities.dates && Array.isArray(entities.dates)) {
+        extractText += `• **Dates:** ${entities.dates.join(", ")}\n`;
+      }
+      if (entities.other && Array.isArray(entities.other)) {
+        extractText += `• **Other:** ${entities.other.join(", ")}\n`;
+      }
+      return extractText.trim() || JSON.stringify(result);
 
     case "email":
       return `**Generated Email:**\n\n${result.email || result.content || result.text || JSON.stringify(result)}`;
@@ -167,6 +200,27 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
       let regexText = `**Generated Regex:**\n\n\`${pattern}\``;
       if (explanation) regexText += `\n\n**Explanation:** ${explanation}`;
       return regexText;
+
+    case "docs":
+      return `**API Documentation:**\n\n${result.documentation || result.docs || result.content || result.text || JSON.stringify(result)}`;
+
+    case "quiz":
+      let quizText = "**Generated Quiz:**\n\n";
+      const questions = result.questions || result.quiz || [];
+      if (Array.isArray(questions)) {
+        questions.forEach((q: any, i: number) => {
+          quizText += `**Question ${i + 1}:** ${q.question || q.text}\n`;
+          if (q.options && Array.isArray(q.options)) {
+            q.options.forEach((opt: string, j: number) => {
+              const letter = String.fromCharCode(65 + j); // A, B, C, D
+              quizText += `  ${letter}. ${opt}\n`;
+            });
+          }
+          if (q.answer) quizText += `  **Answer:** ${q.answer}\n`;
+          quizText += "\n";
+        });
+      }
+      return quizText.trim() || JSON.stringify(result);
 
     case "generate_image":
       // Image generation is handled separately with attachmentPreview
