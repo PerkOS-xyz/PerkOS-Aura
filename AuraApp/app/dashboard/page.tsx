@@ -60,6 +60,10 @@ export default function DashboardPage() {
   const account = useActiveAccount();
   const [copied, setCopied] = useState(false);
 
+  // Wallet connection loading state - gives wallet time to auto-reconnect after hot reload
+  const [walletLoading, setWalletLoading] = useState(true);
+  const walletLoadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Project state
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -72,6 +76,70 @@ export default function DashboardPage() {
 
   // Track recently deleted conversations to prevent race conditions
   const recentlyDeletedRef = useRef<Set<string>>(new Set());
+
+  // Handle wallet loading state - wait a bit for wallet to auto-reconnect after hot reload
+  useEffect(() => {
+    console.log("[Dashboard] Wallet state changed:", {
+      hasAccount: !!account,
+      address: account?.address,
+      walletLoading,
+      hasTimeout: !!walletLoadingTimeoutRef.current,
+    });
+
+    if (account?.address) {
+      // Wallet connected, stop loading
+      console.log("[Dashboard] Wallet connected, stopping loading state");
+      setWalletLoading(false);
+      if (walletLoadingTimeoutRef.current) {
+        clearTimeout(walletLoadingTimeoutRef.current);
+        walletLoadingTimeoutRef.current = null;
+      }
+    } else {
+      // No wallet - wait a short time for potential auto-reconnect
+      console.log("[Dashboard] No wallet detected, starting timeout");
+      if (!walletLoadingTimeoutRef.current) {
+        walletLoadingTimeoutRef.current = setTimeout(() => {
+          console.log("[Dashboard] Wallet timeout expired, showing connect prompt");
+          setWalletLoading(false);
+          walletLoadingTimeoutRef.current = null;
+        }, 1500); // Wait 1.5 seconds for auto-reconnect
+      }
+    }
+
+    return () => {
+      if (walletLoadingTimeoutRef.current) {
+        clearTimeout(walletLoadingTimeoutRef.current);
+      }
+    };
+  }, [account?.address]);
+
+  // Global error handler for debugging
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error("[Dashboard] GLOBAL ERROR CAUGHT:", {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error,
+      });
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error("[Dashboard] UNHANDLED PROMISE REJECTION:", {
+        reason: event.reason,
+        stack: event.reason?.stack,
+      });
+    };
+
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, []);
 
   // Cache configuration
   const CACHE_DURATION_MS = 30000; // 30 seconds cache validity
@@ -551,6 +619,18 @@ export default function DashboardPage() {
       fetchConversations({ preserveOptimistic: true }); // Keep optimistic updates while syncing with server
     }, 1500);
   };
+
+  // Show loading state while waiting for wallet to potentially reconnect
+  if (!account?.address && walletLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-aura-purple border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Connecting wallet...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!account?.address) {
     return (
