@@ -247,6 +247,52 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
   }
 }
 
+// Helper to format complex response objects (sentiment, entities, quiz, etc.) into readable text
+function formatComplexResponse(data: Record<string, unknown>): string | null {
+  // Skip if it looks like raw API response metadata
+  if ("success" in data && Object.keys(data).length <= 2) return null;
+
+  // Try to intelligently format the data
+  const entries = Object.entries(data).filter(([key]) =>
+    !["success", "status", "error", "message"].includes(key)
+  );
+
+  if (entries.length === 0) return null;
+
+  // If there's only one key with a string value, return it directly
+  if (entries.length === 1 && typeof entries[0][1] === "string") {
+    return entries[0][1];
+  }
+
+  // Format as structured text
+  let result = "";
+  for (const [key, value] of entries) {
+    const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
+    if (typeof value === "string") {
+      result += `**${label}:** ${value}\n\n`;
+    } else if (Array.isArray(value)) {
+      result += `**${label}:**\n${value.map((v, i) => `${i + 1}. ${typeof v === "string" ? v : JSON.stringify(v)}`).join("\n")}\n\n`;
+    } else if (typeof value === "object" && value !== null) {
+      result += `**${label}:**\n${JSON.stringify(value, null, 2)}\n\n`;
+    } else if (value !== undefined && value !== null) {
+      result += `**${label}:** ${String(value)}\n\n`;
+    }
+  }
+
+  return result.trim() || null;
+}
+
+// Helper to extract service ID from API URL
+function extractServiceIdFromUrl(url: string): string | null {
+  // Match patterns like /api/ai/summarize, /api/ai/code/generate, etc.
+  const match = url.match(/\/api\/ai\/([^/]+)(?:\/([^/]+))?/);
+  if (!match) return null;
+
+  // For nested paths like /api/ai/code/generate, return "code"
+  // For simple paths like /api/ai/summarize, return "summarize"
+  return match[1];
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -557,13 +603,26 @@ export function ChatInterface({
 
     try {
       setLoading(true);
+      console.log("[ChatInterface] Starting fetch to:", action.url);
+
       const response = await fetch(action.url, {
         method: action.method,
         headers,
         body: action.body instanceof FormData ? action.body : JSON.stringify(action.body),
       });
 
+      console.log("[ChatInterface] Fetch completed:", {
+        status: response.status,
+        ok: response.ok,
+        hasPaymentResponse: !!response.headers.get("PAYMENT-RESPONSE"),
+      });
+
       const data = await response.json();
+      console.log("[ChatInterface] Response parsed:", {
+        success: data.success,
+        hasData: !!data.data,
+        keys: Object.keys(data),
+      });
 
       // Extract transaction hash from PAYMENT-RESPONSE header
       let transactionHash: string | undefined;
@@ -587,6 +646,11 @@ export function ChatInterface({
       }
 
       // Payment and service succeeded - deduct 1 credit for the interaction
+      console.log("[ChatInterface] About to deduct credit, account state:", {
+        hasAccount: !!account,
+        address: account?.address,
+      });
+
       if (account?.address) {
         try {
           const creditResponse = await fetch("/api/credits/deduct", {
@@ -607,8 +671,20 @@ export function ChatInterface({
       }
 
       // Success! Update messages
+      console.log("[ChatInterface] Processing successful response:", {
+        url: action.url,
+        hasData: !!data.data,
+        dataKeys: data.data ? Object.keys(data.data) : [],
+      });
+
       // Remove payment request message
-      setMessages((prev) => prev.filter(m => !m.paymentRequest || m.paymentRequest.paymentId !== paymentId));
+      console.log("[ChatInterface] Removing payment request message for paymentId:", paymentId);
+      setMessages((prev) => {
+        console.log("[ChatInterface] setMessages filter - prev count:", prev.length);
+        const filtered = prev.filter(m => !m.paymentRequest || m.paymentRequest.paymentId !== paymentId);
+        console.log("[ChatInterface] setMessages filter - new count:", filtered.length);
+        return filtered;
+      });
 
       // Determine the response content based on endpoint type
       let responseContent = "Success!";
@@ -636,9 +712,64 @@ export function ChatInterface({
         attachmentType = "audio";
         responseContent = "Here's your synthesized audio!";
       } else {
-        // Text responses (analysis, transcription, etc.)
-        responseContent = data.response || data.analysis || data.transcription || data.data?.text || "Success!";
+        // Text responses (analysis, transcription, summarization, etc.)
+        // Try to use the comprehensive service-specific formatter
+        const serviceId = extractServiceIdFromUrl(action.url);
+        console.log("[ChatInterface] Formatting text response:", { serviceId, url: action.url });
+
+        if (serviceId) {
+          try {
+            responseContent = formatPaidServiceResponse(serviceId, data);
+            console.log("[ChatInterface] Formatted response:", {
+              serviceId,
+              responseLength: responseContent?.length || 0,
+              preview: responseContent?.substring(0, 100)
+            });
+          } catch (formatError) {
+            console.error("[ChatInterface] Error formatting response:", formatError);
+            // Fall through to manual extraction
+          }
+        }
+
+        // If no serviceId or formatting failed, use manual extraction
+        if (!serviceId || responseContent === "Success!") {
+          // Fallback: Handle various service response formats manually
+          responseContent = data.response ||
+            data.analysis ||
+            data.transcription ||
+            data.data?.text ||
+            data.data?.summary ||
+            data.data?.translation ||
+            data.data?.simplified ||
+            data.data?.code ||
+            data.data?.email ||
+            data.data?.review ||
+            data.data?.sql ||
+            data.data?.regex ||
+            data.data?.documentation ||
+            data.data?.description ||
+            data.data?.optimized ||
+            // For complex objects (sentiment, entities, quiz, etc.), format as readable text
+            (data.data && typeof data.data === "object" && !Array.isArray(data.data)
+              ? (() => {
+                  try {
+                    return formatComplexResponse(data.data);
+                  } catch (e) {
+                    console.error("[ChatInterface] Error in formatComplexResponse:", e);
+                    return null;
+                  }
+                })()
+              : null) ||
+            "Success!";
+        }
       }
+
+      console.log("[ChatInterface] Adding assistant message:", {
+        contentLength: responseContent?.length || 0,
+        hasAttachment: !!attachmentPreview,
+        attachmentType,
+        transactionHash,
+      });
 
       // Add assistant response with transaction info
       const assistantMessage: Message = {
@@ -650,7 +781,12 @@ export function ChatInterface({
         transactionHash,
         paymentNetwork,
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+      console.log("[ChatInterface] Adding assistant message to state");
+      setMessages((prev) => {
+        console.log("[ChatInterface] setMessages add - prev count:", prev.length);
+        return [...prev, assistantMessage];
+      });
+      console.log("[ChatInterface] Assistant message added to state queue");
 
       // Save the generated result to the database so it persists
       // IMPORTANT: Skip saving if the endpoint already saves to database (like /api/chat/image)
@@ -716,15 +852,18 @@ export function ChatInterface({
       }
 
       // Cleanup
+      console.log("[ChatInterface] Cleaning up after successful payment");
       pendingActionsRef.current.delete(paymentId);
       processingPaymentsRef.current.delete(paymentId);
       // Clear selected paid service (safety - should already be cleared when 402 was returned)
       if (selectedPaidService) {
         setSelectedPaidService(null);
       }
+      console.log("[ChatInterface] retryPendingAction completed successfully");
 
     } catch (error) {
-      console.error("Retry error:", error);
+      console.error("[ChatInterface] retryPendingAction CAUGHT ERROR:", error);
+      console.error("[ChatInterface] Error stack:", error instanceof Error ? error.stack : "No stack");
       setMessages((prev) => [...prev, {
         role: "assistant",
         content: `Retry failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -737,6 +876,7 @@ export function ChatInterface({
         setSelectedPaidService(null);
       }
     } finally {
+      console.log("[ChatInterface] retryPendingAction finally block - setting loading to false");
       setLoading(false);
     }
   };
