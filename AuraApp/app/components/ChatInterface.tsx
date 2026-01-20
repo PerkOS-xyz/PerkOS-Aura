@@ -259,6 +259,8 @@ interface Message {
   attachmentPreview?: string;
   transactionHash?: string;
   paymentNetwork?: string;
+  // Credit cost for this message (shown on user messages)
+  creditsCost?: number;
 }
 
 interface ChatInterfaceProps {
@@ -401,6 +403,79 @@ function PaidBadge({ paymentInfo }: { paymentInfo: ParsedPaymentInfo["paymentInf
   );
 }
 
+// Component to display insufficient credits message with CTA
+function InsufficientCreditsCard({ cost, balance }: { cost: number; balance: number }) {
+  return (
+    <div className="my-3 overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-red-500/10 shadow-lg shadow-amber-500/5">
+      {/* Header with icon */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-amber-500/20 bg-amber-500/5">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="font-semibold text-amber-200">Out of Credits</h3>
+          <p className="text-xs text-amber-300/70">Your balance: {balance} credits</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-5 py-4 space-y-4">
+        <p className="text-sm text-foreground/80">
+          You need <span className="font-semibold text-amber-300">{cost} credit{cost > 1 ? "s" : ""}</span> to send a message.
+        </p>
+
+        {/* Options */}
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 text-green-400 flex-shrink-0">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>Free users get <strong className="text-foreground">50 credits/month</strong></span>
+          </div>
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 text-green-400 flex-shrink-0">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>Upgrade for more credits + <strong className="text-foreground">x402 discounts</strong></span>
+          </div>
+        </div>
+
+        {/* CTA Button */}
+        <a
+          href="/dashboard/subscription"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 mt-4 font-medium text-sm text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 rounded-xl shadow-lg shadow-amber-500/20 transition-all duration-200 hover:shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v4" />
+            <path d="m16.2 7.8 2.9-2.9" />
+            <path d="M18 12h4" />
+            <path d="m16.2 16.2 2.9 2.9" />
+            <path d="M12 18v4" />
+            <path d="m4.9 19.1 2.9-2.9" />
+            <path d="M2 12h4" />
+            <path d="m4.9 4.9 2.9 2.9" />
+          </svg>
+          Get More Credits
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// Helper to check if message is an insufficient credits message
+function parseInsufficientCredits(content: string): { cost: number; balance: number } | null {
+  if (!content.startsWith("__INSUFFICIENT_CREDITS__:")) return null;
+  try {
+    const json = content.replace("__INSUFFICIENT_CREDITS__:", "");
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 export function ChatInterface({
   conversationId: initialConversationId,
   projectId,
@@ -509,6 +584,26 @@ export function ChatInterface({
         // Include detailed reason if available (x402 middleware returns reason + details)
         const errorMsg = data.reason || data.details || data.error || data.message || "Retry failed";
         throw new Error(errorMsg);
+      }
+
+      // Payment and service succeeded - deduct 1 credit for the interaction
+      if (account?.address) {
+        try {
+          const creditResponse = await fetch("/api/credits/deduct", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              walletAddress: account.address,
+              description: `x402 Service: ${action.description || action.url}`,
+            }),
+          });
+          if (creditResponse.ok) {
+            const creditData = await creditResponse.json();
+            console.log("[ChatInterface] Credit deducted for x402 service:", creditData.newBalance);
+          }
+        } catch (e) {
+          console.warn("[ChatInterface] Failed to deduct credit for x402 service:", e);
+        }
       }
 
       // Success! Update messages
@@ -623,6 +718,10 @@ export function ChatInterface({
       // Cleanup
       pendingActionsRef.current.delete(paymentId);
       processingPaymentsRef.current.delete(paymentId);
+      // Clear selected paid service (safety - should already be cleared when 402 was returned)
+      if (selectedPaidService) {
+        setSelectedPaidService(null);
+      }
 
     } catch (error) {
       console.error("Retry error:", error);
@@ -633,6 +732,10 @@ export function ChatInterface({
       }]);
       // Clean up processing state on error too
       processingPaymentsRef.current.delete(paymentId);
+      // Clear selected paid service on error too
+      if (selectedPaidService) {
+        setSelectedPaidService(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -1023,13 +1126,19 @@ export function ChatInterface({
     const messageText = input.trim();
     const hasAttachment = !!attachedFile;
 
-    // Create user message
+    // Check if a paid service from ServiceSelector was selected
+    const isPaidServiceCall = selectedPaidService?.endpoint && !attachedFile;
+
+    // Create user message with credit cost indicator
+    // Every interaction costs 1 credit (for agent processing)
+    // x402 services cost additional money via x402 payment on top of the 1 credit
     const userMessage: Message = {
       role: "user",
       content: messageText || (hasAttachment ? "📎 [Image attached]" : ""),
       timestamp: new Date().toISOString(),
       attachmentType: hasAttachment ? "image" : undefined,
       attachmentPreview: attachedPreview || undefined,
+      creditsCost: 1, // Every interaction costs 1 credit
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -1050,9 +1159,6 @@ export function ChatInterface({
       let method = "POST";
       let headers: Record<string, string> = { "Content-Type": "application/json" };
 
-      // Check if a paid service from ServiceSelector was selected
-      const isPaidServiceCall = selectedPaidService?.endpoint && !fileToSend;
-
       if (fileToSend) {
         // Upload file first
         const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
@@ -1067,7 +1173,7 @@ export function ChatInterface({
           projectId: projectId || null
         };
         // fetch call below will use url/body
-      } else if (isPaidServiceCall && selectedPaidService) {
+      } else if (isPaidServiceCall && selectedPaidService && selectedPaidService.endpoint) {
         // Route to paid AI service endpoint (x402 protected)
         url = selectedPaidService.endpoint;
         // Build endpoint-specific request body using helper function
@@ -1141,6 +1247,12 @@ export function ChatInterface({
             paymentAccepts: accepts,
             paymentDefaultNetwork: defaultNetwork,
           }]);
+
+          // Clear selected paid service - the pending action is stored in pendingActionsRef
+          // This prevents subsequent messages from routing to the paid service again
+          if (selectedPaidService) {
+            setSelectedPaidService(null);
+          }
           return;
         }
       }
@@ -1148,6 +1260,16 @@ export function ChatInterface({
       data = await response.json();
 
       if (!response.ok || !data.success) {
+        // Handle insufficient credits error specially
+        if (data.code === "INSUFFICIENT_CREDITS") {
+          const creditMessage: Message = {
+            role: "assistant",
+            content: `__INSUFFICIENT_CREDITS__:${JSON.stringify({ cost: data.cost || 1, balance: data.balance || 0 })}`,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, creditMessage]);
+          return;
+        }
         const errorMsg = data.error || data.message || "Failed to get response";
         throw new Error(errorMsg);
       }
@@ -1493,6 +1615,19 @@ export function ChatInterface({
                     : "bg-muted text-foreground rounded-bl-none"
                   }`}
                 >
+                  {/* Credit cost badge for user messages */}
+                  {message.role === "user" && message.creditsCost && (
+                    <div className="flex items-center gap-1.5 mb-2 -mt-0.5">
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-[10px] font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 6v12" />
+                          <path d="M6 12h12" />
+                        </svg>
+                        <span>{message.creditsCost} credit</span>
+                      </div>
+                    </div>
+                  )}
                   {/* Show image preview if attached */}
                   {message.attachmentPreview && message.attachmentType === "image" && (
                     <div className="mb-2 inline-block relative group">
@@ -1554,6 +1689,12 @@ export function ChatInterface({
                     </div>
                   )}
                   {(() => {
+                    // Check for insufficient credits message first
+                    const creditsData = parseInsufficientCredits(message.content);
+                    if (creditsData) {
+                      return <InsufficientCreditsCard cost={creditsData.cost} balance={creditsData.balance} />;
+                    }
+
                     const parsed = parsePaymentRequestFromContent(message.content);
                     if (parsed.paymentInfo) {
                       return (

@@ -182,7 +182,15 @@ export default function AdminPage() {
             </div>
 
             {/* Quick Links */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <Link
+                    href="/admin/membership"
+                    className="block bg-gradient-to-br from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/30 rounded-xl p-6 backdrop-blur-sm transition-all"
+                >
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Membership Management</h3>
+                    <p className="text-sm text-muted-foreground">View users, subscriptions, and revenue</p>
+                </Link>
+
                 <Link
                     href="/dashboard"
                     className="block bg-gradient-to-br from-aura-purple/20 to-aura-cyan/20 hover:from-aura-purple/30 hover:to-aura-cyan/30 border border-aura-purple/30 rounded-xl p-6 backdrop-blur-sm transition-all"

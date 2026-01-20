@@ -70,6 +70,14 @@ const parsePrice = (envVar: string | undefined, fallback: number): number => {
   return isNaN(parsed) ? fallback : parsed;
 };
 
+// Subscription Pricing Configuration
+// Prices match SUBSCRIPTION_TIERS in CreditsService.ts
+export const subscriptionPricing = {
+  starter: parsePrice(process.env.NEXT_PUBLIC_SUBSCRIPTION_STARTER_PRICE_USD, 4.99),
+  pro: parsePrice(process.env.NEXT_PUBLIC_SUBSCRIPTION_PRO_PRICE_USD, 14.99),
+  unlimited: parsePrice(process.env.NEXT_PUBLIC_SUBSCRIPTION_UNLIMITED_PRICE_USD, 49.99),
+};
+
 // AI Service Pricing Configuration (ALL 20 SERVICES)
 // All prices configurable via environment variables with sensible defaults
 export const aiServiceConfig = {
@@ -193,4 +201,8 @@ export const paymentRoutes = {
   // Chat Integration
   "/api/chat/image": aiServiceConfig.analyzePriceUsd,
   "/api/chat/audio": aiServiceConfig.transcribePriceUsd,
+  // Subscription Plans
+  "/api/subscription/starter": subscriptionPricing.starter,
+  "/api/subscription/pro": subscriptionPricing.pro,
+  "/api/subscription/unlimited": subscriptionPricing.unlimited,
 };
