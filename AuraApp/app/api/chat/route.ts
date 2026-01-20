@@ -3,6 +3,7 @@ import { aiActions } from "@/lib/services/elizaos/actions";
 import { getElizaServiceV2 } from "@/lib/services/ElizaServiceV2";
 import { chatRequestSchema } from "@/lib/validators";
 import { ValidationError } from "@/lib/errors";
+import { creditsService } from "@/lib/services/CreditsService";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
     const elizaServiceV2 = getElizaServiceV2(validatedData.walletAddress);
 
     // Handle storeOnly mode - just store the message without generating a response
+    // storeOnly doesn't consume credits as it's just saving a message
     if (validatedData.storeOnly && validatedData.role === "assistant") {
       console.log("[Chat API] storeOnly mode - storing assistant message", {
         conversationId: validatedData.conversationId,
@@ -43,15 +45,50 @@ export async function POST(request: NextRequest) {
     }
 
     // Normal mode - process message and generate response
+    // Check if user has credits before processing
+    console.log(`[Chat API] Checking credits for ${validatedData.walletAddress}`);
+    const creditCheck = await creditsService.hasCredits(validatedData.walletAddress);
+
+    if (!creditCheck.hasCredits) {
+      console.log(`[Chat API] Insufficient credits: balance=${creditCheck.balance}, cost=${creditCheck.cost}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Insufficient credits",
+          message: `You need ${creditCheck.cost} credit(s) to send a message. Current balance: ${creditCheck.balance}`,
+          code: "INSUFFICIENT_CREDITS",
+          balance: creditCheck.balance,
+          cost: creditCheck.cost,
+        },
+        { status: 402 }
+      );
+    }
+
+    // Process the message
     const response = await elizaServiceV2.processMessage({
       message: validatedData.message,
       conversationId: validatedData.conversationId || undefined,
       projectId: validatedData.projectId || undefined,
     });
 
+    // Deduct credit after successful processing
+    const deductResult = await creditsService.deductCredit(
+      validatedData.walletAddress,
+      `Chat: ${validatedData.message.substring(0, 50)}${validatedData.message.length > 50 ? "..." : ""}`
+    );
+
+    if (!deductResult.success) {
+      console.warn(`[Chat API] Failed to deduct credit: ${deductResult.error}`);
+      // Don't fail the request if deduction fails after processing
+      // The message was already sent
+    } else {
+      console.log(`[Chat API] Credit deducted. New balance: ${deductResult.newBalance}`);
+    }
+
     return NextResponse.json({
       success: true,
       ...response,
+      creditsRemaining: deductResult.newBalance,
     });
   } catch (error) {
     console.error("Chat error:", error);

@@ -106,6 +106,10 @@ export const COLLECTIONS = {
   MESSAGES: "messages",
   PROJECTS: "projects",
   KNOWLEDGE: "knowledge",
+  // Credits system
+  USER_CREDITS: "user_credits",
+  CREDIT_TRANSACTIONS: "credit_transactions",
+  SUBSCRIPTIONS: "subscriptions",
 } as const;
 
 /**
