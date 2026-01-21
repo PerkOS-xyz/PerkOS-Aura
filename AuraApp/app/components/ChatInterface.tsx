@@ -68,7 +68,15 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
     case "code_review":
       return { code: text };
     case "sql":
-      return { prompt: text, dialect: "postgresql" };
+      // Extract schema if user provides it (e.g., "schema: users(id, name, email) query: find all users")
+      // Otherwise use a default generic schema
+      const schemaMatch = text.match(/schema[:\s]+([^,]+(?:,\s*[^,]+)*)\s*(?:query|find|select|get|show|list)/i);
+      const queryMatch = text.match(/(?:query[:\s]+|find|select|get|show|list)(.+)/i);
+      const defaultSchema = "customers(id, name, email, created_at), orders(id, customer_id, total_amount, order_date), products(id, name, price, category)";
+      return {
+        schema: schemaMatch?.[1]?.trim() || defaultSchema,
+        query: queryMatch?.[1]?.trim() || text
+      };
     case "regex":
       return { description: text };
     case "docs":
