@@ -33,7 +33,13 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
     case "translate":
       // Try to extract target language from prompt, default to Spanish
       const langMatch = text.match(/(?:to|into)\s+(\w+)/i);
-      return { text, targetLang: langMatch?.[1] || "Spanish" };
+      // Try to extract source language from prompt (e.g., "from English to Spanish")
+      const sourceLangMatch = text.match(/(?:from)\s+(\w+)/i);
+      return {
+        text,
+        sourceLang: sourceLangMatch?.[1] || "English", // Default to English if not specified
+        targetLang: langMatch?.[1] || "Spanish"
+      };
     case "sentiment":
       return { text };
     case "moderate":
@@ -288,9 +294,20 @@ function extractServiceIdFromUrl(url: string): string | null {
   const match = url.match(/\/api\/ai\/([^/]+)(?:\/([^/]+))?/);
   if (!match) return null;
 
-  // For nested paths like /api/ai/code/generate, return "code"
-  // For simple paths like /api/ai/summarize, return "summarize"
-  return match[1];
+  const firstPart = match[1]; // e.g., "code", "summarize"
+  const secondPart = match[2]; // e.g., "generate", "review", undefined
+
+  // Handle special nested routes that need combined IDs
+  // /api/ai/code/review -> "code_review" (different from code/generate)
+  if (firstPart === "code" && secondPart === "review") {
+    return "code_review";
+  }
+
+  // For most nested paths, use the first part only
+  // /api/ai/code/generate -> "code"
+  // /api/ai/email/generate -> "email"
+  // /api/ai/summarize -> "summarize"
+  return firstPart;
 }
 
 interface Message {
