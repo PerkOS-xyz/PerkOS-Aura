@@ -73,6 +73,8 @@ export default function DashboardPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  // Key to force ChatInterface re-mount on "New Chat" click
+  const [chatKey, setChatKey] = useState(0);
 
   // Track recently deleted conversations to prevent race conditions
   const recentlyDeletedRef = useRef<Set<string>>(new Set());
@@ -580,6 +582,8 @@ export default function DashboardPage() {
   const handleNewConversation = () => {
     setSelectedConversation(null);
     setShowConversationList(false); // Close mobile conversation list
+    // Increment key to force ChatInterface to re-mount with fresh state
+    setChatKey(prev => prev + 1);
   };
 
   // Handle conversation change from ChatInterface
@@ -869,6 +873,7 @@ export default function DashboardPage() {
         {/* Chat Interface */}
         <div className="flex-1 flex flex-col bg-background min-w-0 overflow-hidden pt-0">
           <ChatInterface
+            key={`chat-${chatKey}-${selectedConversation || 'new'}`}
             conversationId={selectedConversation || undefined}
             projectId={selectedProject?.id}
             onConversationChange={handleConversationChange}
