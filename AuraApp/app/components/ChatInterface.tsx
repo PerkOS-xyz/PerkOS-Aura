@@ -110,10 +110,34 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
       const emotions = result.emotions;
       let sentimentText = `**Sentiment Analysis:**\n\n• **Overall:** ${sentiment}`;
       if (confidence) sentimentText += ` (${(confidence * 100).toFixed(1)}% confidence)`;
-      if (emotions && typeof emotions === "object") {
-        sentimentText += "\n• **Emotions:**";
-        for (const [emotion, score] of Object.entries(emotions)) {
-          sentimentText += `\n  - ${emotion}: ${((score as number) * 100).toFixed(1)}%`;
+      if (emotions) {
+        // Handle different emotion formats
+        if (Array.isArray(emotions)) {
+          if (emotions.length > 0) {
+            sentimentText += "\n• **Emotions:** ";
+            // Check if array of strings or array of objects
+            if (typeof emotions[0] === "string") {
+              // Array of emotion names: ["joy", "happiness"]
+              sentimentText += emotions.join(", ");
+            } else if (typeof emotions[0] === "object") {
+              // Array of objects: [{emotion: "joy", score: 0.8}]
+              sentimentText += emotions.map((e: { emotion?: string; name?: string; label?: string; score?: number; value?: number }) => {
+                const name = e.emotion || e.name || e.label || "unknown";
+                const score = e.score ?? e.value;
+                return score !== undefined ? `${name} (${(score * 100).toFixed(0)}%)` : name;
+              }).join(", ");
+            }
+          }
+        } else if (typeof emotions === "object") {
+          // Object with emotion names as keys: {joy: 0.8, sadness: 0.2}
+          sentimentText += "\n• **Emotions:**";
+          for (const [emotion, score] of Object.entries(emotions)) {
+            if (typeof score === "number") {
+              sentimentText += `\n  - ${emotion}: ${(score * 100).toFixed(0)}%`;
+            } else {
+              sentimentText += `\n  - ${emotion}: ${score}`;
+            }
+          }
         }
       }
       return sentimentText;
