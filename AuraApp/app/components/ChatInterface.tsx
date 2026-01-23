@@ -182,24 +182,76 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
       return `**Simplified Text:**\n\n${result.simplified || result.text || result.content || JSON.stringify(result)}`;
 
     case "extract":
+      // Handle string response (AI returned text description)
+      if (typeof result === "string") {
+        return `**Extracted Entities:**\n\n${result}`;
+      }
+      // Handle text/content field response
+      if (result.text || result.content || result.extraction) {
+        return `**Extracted Entities:**\n\n${result.text || result.content || result.extraction}`;
+      }
+      // Handle structured entities response
       let extractText = "**Extracted Entities:**\n\n";
       const entities = result.entities || result;
-      if (entities.people && Array.isArray(entities.people)) {
-        extractText += `• **People:** ${entities.people.join(", ")}\n`;
+      let hasEntities = false;
+      // Check various property names for entity arrays
+      const personKeys = ["people", "persons", "PERSON", "Person"];
+      const placeKeys = ["places", "locations", "LOCATION", "GPE", "Location"];
+      const orgKeys = ["organizations", "orgs", "ORG", "Organization"];
+      const dateKeys = ["dates", "DATE", "Date", "times", "TIME"];
+      const otherKeys = ["other", "misc", "MISC", "products", "events", "money", "percent"];
+
+      for (const key of personKeys) {
+        if (entities[key] && Array.isArray(entities[key]) && entities[key].length > 0) {
+          extractText += `• **People:** ${entities[key].join(", ")}\n`;
+          hasEntities = true;
+          break;
+        }
       }
-      if (entities.places && Array.isArray(entities.places)) {
-        extractText += `• **Places:** ${entities.places.join(", ")}\n`;
+      for (const key of placeKeys) {
+        if (entities[key] && Array.isArray(entities[key]) && entities[key].length > 0) {
+          extractText += `• **Places:** ${entities[key].join(", ")}\n`;
+          hasEntities = true;
+          break;
+        }
       }
-      if (entities.organizations && Array.isArray(entities.organizations)) {
-        extractText += `• **Organizations:** ${entities.organizations.join(", ")}\n`;
+      for (const key of orgKeys) {
+        if (entities[key] && Array.isArray(entities[key]) && entities[key].length > 0) {
+          extractText += `• **Organizations:** ${entities[key].join(", ")}\n`;
+          hasEntities = true;
+          break;
+        }
       }
-      if (entities.dates && Array.isArray(entities.dates)) {
-        extractText += `• **Dates:** ${entities.dates.join(", ")}\n`;
+      for (const key of dateKeys) {
+        if (entities[key] && Array.isArray(entities[key]) && entities[key].length > 0) {
+          extractText += `• **Dates:** ${entities[key].join(", ")}\n`;
+          hasEntities = true;
+          break;
+        }
       }
-      if (entities.other && Array.isArray(entities.other)) {
-        extractText += `• **Other:** ${entities.other.join(", ")}\n`;
+      for (const key of otherKeys) {
+        if (entities[key] && Array.isArray(entities[key]) && entities[key].length > 0) {
+          extractText += `• **Other (${key}):** ${entities[key].join(", ")}\n`;
+          hasEntities = true;
+        }
       }
-      return extractText.trim() || JSON.stringify(result);
+      // Fallback: show all keys found in entities object
+      if (!hasEntities && typeof entities === "object") {
+        for (const [key, value] of Object.entries(entities)) {
+          if (Array.isArray(value) && value.length > 0) {
+            extractText += `• **${key}:** ${value.join(", ")}\n`;
+            hasEntities = true;
+          } else if (typeof value === "string" && value.length > 0) {
+            extractText += `• **${key}:** ${value}\n`;
+            hasEntities = true;
+          }
+        }
+      }
+      // If still no entities found, show JSON
+      if (!hasEntities) {
+        return `**Extracted Entities:**\n\n${JSON.stringify(result, null, 2)}`;
+      }
+      return extractText.trim();
 
     case "email":
       return `**Generated Email:**\n\n${result.email || result.content || result.text || JSON.stringify(result)}`;
