@@ -30,19 +30,25 @@ export async function POST(request: NextRequest) {
             validatedData.voice
         );
 
-        // 4. Return Response (Audio File)
-        const headers = new Headers();
-        headers.set("Content-Type", "audio/mpeg");
-        headers.set("Content-Length", audioBuffer.length.toString());
+        // 4. Convert buffer to base64 data URL
+        const base64Audio = Buffer.from(audioBuffer).toString("base64");
+        const audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`;
 
+        // 5. Return JSON response (matching pattern of other AI endpoints)
+        const headers: Record<string, string> = {};
         if (paymentResult.paymentResponseHeader) {
-            headers.set("PAYMENT-RESPONSE", paymentResult.paymentResponseHeader);
+            headers["PAYMENT-RESPONSE"] = paymentResult.paymentResponseHeader;
         }
 
-        return new NextResponse(new Uint8Array(audioBuffer), {
-            status: 200,
-            headers,
-        });
+        return NextResponse.json({
+            success: true,
+            data: {
+                audio: audioDataUrl,
+                format: "mp3",
+                text: validatedData.text,
+                voice: validatedData.voice,
+            },
+        }, { headers });
     } catch (error) {
         console.error("AI Synthesis error:", error);
         if (error instanceof z.ZodError) {
