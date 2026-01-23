@@ -590,10 +590,11 @@ export default function DashboardPage() {
   };
 
   const handleCopyAddress = async () => {
-    if (!account?.address) return;
+    const addressToCopy = account?.address || lastKnownWalletRef.current;
+    if (!addressToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(account.address);
+      await navigator.clipboard.writeText(addressToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -873,12 +874,12 @@ export default function DashboardPage() {
         <div className="p-3 border-t border-border mt-auto">
           <div className="flex items-center gap-2 p-2 hover:bg-background rounded-lg transition-colors cursor-pointer" onClick={handleCopyAddress}>
             <div className="w-8 h-8 rounded-full bg-aura-gradient flex items-center justify-center text-white text-xs font-bold">
-              {account.address.slice(2, 4).toUpperCase()}
+              {effectiveWalletAddress?.slice(2, 4).toUpperCase() || "??"}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-foreground truncate">
                 {/* TODO: Integrate ENS resolution */}
-                {formatAddress(account.address)}
+                {effectiveWalletAddress ? formatAddress(effectiveWalletAddress) : "Connecting..."}
               </div>
               <div className="text-[10px] text-muted-foreground">{copied ? "Copied!" : "Click to copy"}</div>
             </div>

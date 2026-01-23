@@ -254,10 +254,27 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
       return extractText.trim();
 
     case "email":
-      return `**Generated Email:**\n\n${result.email || result.content || result.text || JSON.stringify(result)}`;
+      // Handle structured email response with subject and body
+      if (result.subject && result.body) {
+        // Replace escaped newlines with actual newlines
+        const formattedBody = result.body.replace(/\\n/g, "\n");
+        return `**Generated Email:**\n\n**Subject:** ${result.subject}\n\n${formattedBody}`;
+      }
+      // Handle string response
+      const emailContent = result.email || result.content || result.text;
+      if (typeof emailContent === "string") {
+        return `**Generated Email:**\n\n${emailContent.replace(/\\n/g, "\n")}`;
+      }
+      // Fallback to JSON
+      return `**Generated Email:**\n\n${JSON.stringify(result, null, 2)}`;
 
     case "product":
-      return `**Product Description:**\n\n${result.description || result.content || result.text || JSON.stringify(result)}`;
+      // Handle string response with escaped newlines
+      const productContent = result.description || result.content || result.text;
+      if (typeof productContent === "string") {
+        return `**Product Description:**\n\n${productContent.replace(/\\n/g, "\n")}`;
+      }
+      return `**Product Description:**\n\n${JSON.stringify(result, null, 2)}`;
 
     case "seo":
       let seoText = "**SEO Optimization Results:**\n\n";
@@ -276,15 +293,25 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
 
     case "code":
       const language = result.language || "typescript";
-      const code = result.code || result.content || result.text;
+      let code = result.code || result.content || result.text || "";
+      // Handle escaped newlines
+      if (typeof code === "string") {
+        code = code.replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+      }
       return `**Generated Code (${language}):**\n\n\`\`\`${language}\n${code}\n\`\`\``;
 
     case "code_review":
       let reviewText = "**Code Review:**\n\n";
+      // Handle string response
+      if (typeof result === "string" || result.review) {
+        const reviewContent = (result.review || result).replace(/\\n/g, "\n");
+        return `**Code Review:**\n\n${reviewContent}`;
+      }
       if (result.issues && Array.isArray(result.issues)) {
         reviewText += "**Issues Found:**\n";
         result.issues.forEach((issue: any, i: number) => {
-          reviewText += `${i + 1}. ${typeof issue === "string" ? issue : issue.description || JSON.stringify(issue)}\n`;
+          const issueText = typeof issue === "string" ? issue : issue.description || JSON.stringify(issue);
+          reviewText += `${i + 1}. ${issueText.replace(/\\n/g, "\n")}\n`;
         });
       }
       if (result.suggestions && Array.isArray(result.suggestions)) {
@@ -294,10 +321,14 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
         });
       }
       if (result.summary) reviewText += `\n**Summary:** ${result.summary}`;
-      return reviewText.trim() || result.review || JSON.stringify(result);
+      return reviewText.trim() || JSON.stringify(result, null, 2);
 
     case "sql":
-      const sql = result.query || result.sql || result.code || result.text;
+      let sql = result.query || result.sql || result.code || result.text || "";
+      // Handle escaped newlines
+      if (typeof sql === "string") {
+        sql = sql.replace(/\\n/g, "\n");
+      }
       return `**Generated SQL Query:**\n\n\`\`\`sql\n${sql}\n\`\`\``;
 
     case "regex":
@@ -308,7 +339,12 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
       return regexText;
 
     case "docs":
-      return `**API Documentation:**\n\n${result.documentation || result.docs || result.content || result.text || JSON.stringify(result)}`;
+      const docsContent = result.documentation || result.docs || result.content || result.text;
+      if (typeof docsContent === "string") {
+        // Handle escaped newlines and format as markdown
+        return `**API Documentation:**\n\n${docsContent.replace(/\\n/g, "\n")}`;
+      }
+      return `**API Documentation:**\n\n${JSON.stringify(result, null, 2)}`;
 
     case "quiz":
       let quizText = "**Generated Quiz:**\n\n";
