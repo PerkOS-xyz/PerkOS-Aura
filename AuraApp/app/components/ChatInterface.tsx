@@ -277,19 +277,63 @@ function formatPaidServiceResponse(serviceId: string, data: any): string {
       return `**Product Description:**\n\n${JSON.stringify(result, null, 2)}`;
 
     case "seo":
+      // Handle string response (AI returned text description)
+      if (typeof result === "string") {
+        return `**SEO Optimization Results:**\n\n${result.replace(/\\n/g, "\n")}`;
+      }
+      // Handle text/content field response
+      if (result.text || result.content || result.optimizedContent) {
+        const seoContent = result.text || result.content || result.optimizedContent;
+        return `**SEO Optimization Results:**\n\n${seoContent.replace(/\\n/g, "\n")}`;
+      }
+      // Handle structured response
       let seoText = "**SEO Optimization Results:**\n\n";
-      if (result.title) seoText += `• **Optimized Title:** ${result.title}\n`;
-      if (result.description) seoText += `• **Meta Description:** ${result.description}\n`;
-      if (result.keywords && Array.isArray(result.keywords)) {
-        seoText += `• **Keywords:** ${result.keywords.join(", ")}\n`;
+      let hasSeoContent = false;
+      // Check various field names for title
+      const seoTitle = result.title || result.optimizedTitle || result.metaTitle;
+      if (seoTitle) {
+        seoText += `• **Optimized Title:** ${seoTitle}\n`;
+        hasSeoContent = true;
       }
-      if (result.suggestions && Array.isArray(result.suggestions)) {
+      // Check various field names for description
+      const seoDesc = result.description || result.metaDescription || result.optimizedDescription;
+      if (seoDesc) {
+        seoText += `• **Meta Description:** ${seoDesc}\n`;
+        hasSeoContent = true;
+      }
+      // Check for keywords
+      const seoKeywords = result.keywords || result.suggestedKeywords || result.tags;
+      if (seoKeywords && Array.isArray(seoKeywords)) {
+        seoText += `• **Keywords:** ${seoKeywords.join(", ")}\n`;
+        hasSeoContent = true;
+      }
+      // Check for suggestions/recommendations
+      const seoSuggestions = result.suggestions || result.recommendations || result.tips;
+      if (seoSuggestions && Array.isArray(seoSuggestions)) {
         seoText += "\n**Suggestions:**\n";
-        result.suggestions.forEach((s: string, i: number) => {
-          seoText += `${i + 1}. ${s}\n`;
+        seoSuggestions.forEach((s: any, i: number) => {
+          const suggestionText = typeof s === "string" ? s : s.text || s.suggestion || JSON.stringify(s);
+          seoText += `${i + 1}. ${suggestionText}\n`;
         });
+        hasSeoContent = true;
       }
-      return seoText.trim() || JSON.stringify(result);
+      // Fallback: show all keys found in result
+      if (!hasSeoContent && typeof result === "object") {
+        for (const [key, value] of Object.entries(result)) {
+          if (typeof value === "string" && value.length > 0) {
+            seoText += `• **${key}:** ${value.replace(/\\n/g, "\n")}\n`;
+            hasSeoContent = true;
+          } else if (Array.isArray(value) && value.length > 0) {
+            seoText += `• **${key}:** ${value.join(", ")}\n`;
+            hasSeoContent = true;
+          }
+        }
+      }
+      // If still no content, show JSON
+      if (!hasSeoContent) {
+        return `**SEO Optimization Results:**\n\n${JSON.stringify(result, null, 2)}`;
+      }
+      return seoText.trim();
 
     case "code":
       const language = result.language || "typescript";
