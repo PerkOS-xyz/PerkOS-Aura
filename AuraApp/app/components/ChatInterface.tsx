@@ -19,7 +19,7 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
   switch (serviceId) {
     // Vision & Audio
     case "analyze_image":
-      return { imageUrl: "", prompt: text }; // Image URL will be added separately
+      return { image: "", question: text }; // Image will be added separately
     case "generate_image":
       return { prompt: text };
     case "transcribe_audio":
@@ -55,17 +55,21 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
     case "sentiment":
       return { text };
     case "moderate":
-      return { text };
+      return { content: text };
     case "simplify":
-      return { text, level: "general" }; // Reading level: general, child, expert
+      return { text, readingLevel: "middle" }; // Reading level: elementary, middle, high
     case "extract":
       return { text };
 
     // Business Tools
     case "email":
-      return { keyPoints: text, tone: "professional" };
+      // Extract key points from text (split by newlines, commas, or bullet points)
+      const emailPoints = text.split(/[\n,•\-]/).map(p => p.trim()).filter(p => p.length > 0);
+      return { purpose: text, keyPoints: emailPoints.length > 0 ? emailPoints : [text], tone: "formal" };
     case "product":
-      return { productName: "Product", features: text };
+      // Extract features from text (split by newlines, commas, or bullet points)
+      const productFeatures = text.split(/[\n,•\-]/).map(f => f.trim()).filter(f => f.length > 0);
+      return { productName: "Product", features: productFeatures.length > 0 ? productFeatures : [text] };
     case "seo":
       // Extract keywords from the prompt if mentioned
       const keywordMatch = text.match(/keywords?\s*['":]?\s*['"](.*?)['"]/i);
@@ -76,9 +80,9 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
 
     // Developer Tools
     case "code":
-      return { prompt: text, language: "typescript" };
+      return { description: text, language: "typescript" };
     case "code_review":
-      return { code: text };
+      return { code: text, language: "typescript" };
     case "sql":
       // Extract schema if user provides it (e.g., "schema: users(id, name, email) query: find all users")
       // Otherwise use a default generic schema
@@ -92,11 +96,11 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
     case "regex":
       return { description: text };
     case "docs":
-      return { code: text, format: "markdown" };
+      return { code: text, framework: "typescript" };
 
     // Advanced
     case "ocr":
-      return { imageUrl: "" }; // Image URL will be added separately
+      return { image: "" }; // Image will be added separately
     case "quiz":
       // Extract number of questions if mentioned, default to 5
       const numMatch = text.match(/(\d+)\s*(?:question|quiz)/i);
