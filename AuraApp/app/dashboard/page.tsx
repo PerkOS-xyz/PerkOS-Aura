@@ -63,6 +63,9 @@ export default function DashboardPage() {
   // Wallet connection loading state - gives wallet time to auto-reconnect after hot reload
   const [walletLoading, setWalletLoading] = useState(true);
   const walletLoadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track last known wallet address to prevent unmounting during temporary disconnections
+  const lastKnownWalletRef = useRef<string | null>(null);
+  const [walletTemporarilyDisconnected, setWalletTemporarilyDisconnected] = useState(false);
 
   // Project state
   const [projects, setProjects] = useState<Project[]>([]);
@@ -86,25 +89,45 @@ export default function DashboardPage() {
       address: account?.address,
       walletLoading,
       hasTimeout: !!walletLoadingTimeoutRef.current,
+      lastKnownWallet: lastKnownWalletRef.current,
     });
 
     if (account?.address) {
-      // Wallet connected, stop loading
+      // Wallet connected, save address and stop loading
       console.log("[Dashboard] Wallet connected, stopping loading state");
+      lastKnownWalletRef.current = account.address;
       setWalletLoading(false);
+      setWalletTemporarilyDisconnected(false);
       if (walletLoadingTimeoutRef.current) {
         clearTimeout(walletLoadingTimeoutRef.current);
         walletLoadingTimeoutRef.current = null;
       }
-    } else {
-      // No wallet - wait a short time for potential auto-reconnect
-      console.log("[Dashboard] No wallet detected, starting timeout");
+    } else if (lastKnownWalletRef.current) {
+      // Wallet was connected but now appears disconnected - likely temporary
+      // Keep the UI mounted and wait longer for reconnection
+      console.log("[Dashboard] Wallet temporarily disconnected, waiting for reconnection");
+      setWalletTemporarilyDisconnected(true);
       if (!walletLoadingTimeoutRef.current) {
         walletLoadingTimeoutRef.current = setTimeout(() => {
-          console.log("[Dashboard] Wallet timeout expired, showing connect prompt");
+          console.log("[Dashboard] Wallet reconnection timeout expired");
+          // Only clear the last known wallet if still disconnected after timeout
+          if (!account?.address) {
+            console.log("[Dashboard] Wallet still disconnected, clearing state");
+            lastKnownWalletRef.current = null;
+            setWalletTemporarilyDisconnected(false);
+          }
+          walletLoadingTimeoutRef.current = null;
+        }, 10000); // Wait 10 seconds for reconnection during operations
+      }
+    } else {
+      // No wallet and no previous connection - wait a short time for initial auto-connect
+      console.log("[Dashboard] No wallet detected, starting initial timeout");
+      if (!walletLoadingTimeoutRef.current) {
+        walletLoadingTimeoutRef.current = setTimeout(() => {
+          console.log("[Dashboard] Initial wallet timeout expired, showing connect prompt");
           setWalletLoading(false);
           walletLoadingTimeoutRef.current = null;
-        }, 1500); // Wait 1.5 seconds for auto-reconnect
+        }, 1500); // Wait 1.5 seconds for initial auto-reconnect
       }
     }
 
@@ -624,8 +647,11 @@ export default function DashboardPage() {
     }, 1500);
   };
 
+  // Use last known wallet address if temporarily disconnected during operations
+  const effectiveWalletAddress = account?.address || lastKnownWalletRef.current;
+
   // Show loading state while waiting for wallet to potentially reconnect
-  if (!account?.address && walletLoading) {
+  if (!effectiveWalletAddress && walletLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
@@ -636,7 +662,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (!account?.address) {
+  // Only show connect prompt if wallet was never connected
+  if (!effectiveWalletAddress) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
@@ -648,7 +675,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-full flex overflow-hidden bg-background">
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Wallet temporarily disconnected banner */}
+      {walletTemporarilyDisconnected && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 text-yellow-600 dark:text-yellow-400 text-sm">
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <span>Wallet temporarily disconnected. Reconnecting...</span>
+        </div>
+      )}
+      <div className="flex-1 flex overflow-hidden">
       {/* Mobile Sidebar Backdrop */}
       {!sidebarCollapsed && (
         <div
@@ -879,6 +914,7 @@ export default function DashboardPage() {
             onConversationChange={handleConversationChange}
           />
         </div>
+      </div>
       </div>
 
       {/* New Project Modal */}
