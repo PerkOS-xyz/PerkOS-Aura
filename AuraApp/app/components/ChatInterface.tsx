@@ -112,6 +112,27 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
   }
 }
 
+// Services that require file uploads before payment
+const FILE_REQUIRED_SERVICES: Record<string, { type: "image" | "audio"; prompt: string }> = {
+  "analyze_image": {
+    type: "image",
+    prompt: "Please attach an image to analyze. Click the attachment button (📎) to upload an image, then click send."
+  },
+  "ocr": {
+    type: "image",
+    prompt: "Please attach an image to extract text from. Click the attachment button (📎) to upload an image, then click send."
+  },
+  "transcribe_audio": {
+    type: "audio",
+    prompt: "Please attach an audio file to transcribe. Click the microphone button (🎤) to record, or use the attachment button to upload an audio file."
+  }
+};
+
+// Helper to check if a service requires a file attachment
+function getFileRequirement(serviceId: string): { type: "image" | "audio"; prompt: string } | null {
+  return FILE_REQUIRED_SERVICES[serviceId] || null;
+}
+
 // Helper to format paid service responses into readable text
 function formatPaidServiceResponse(serviceId: string, data: any): string {
   // Handle nested data structure (some endpoints return { success, data: {...} })
@@ -759,6 +780,7 @@ export function ChatInterface({
     headers?: Record<string, string>;
     body: any;
     description: string;
+    isFormData?: boolean;
   }>>(new Map());
 
   // Track payment IDs currently being processed to prevent duplicate settlements
@@ -793,10 +815,14 @@ export function ChatInterface({
     };
     console.log("[ChatInterface] Payment payload:", JSON.stringify(paymentPayload, null, 2));
 
-    const headers = {
-      ...action.headers,
-      "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify(paymentPayload)).toString("base64")
-    };
+    // For FormData, don't include Content-Type - browser sets it automatically with boundary
+    const baseHeaders = action.isFormData
+      ? { "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify(paymentPayload)).toString("base64") }
+      : {
+          ...action.headers,
+          "PAYMENT-SIGNATURE": Buffer.from(JSON.stringify(paymentPayload)).toString("base64")
+        };
+    const headers = baseHeaders;
 
     try {
       setLoading(true);
@@ -1463,6 +1489,36 @@ export function ChatInterface({
     const messageText = input.trim();
     const hasAttachment = !!attachedFile;
 
+    // Check if selected service requires a file attachment
+    if (selectedPaidService?.serviceId && !hasAttachment) {
+      const fileRequirement = getFileRequirement(selectedPaidService.serviceId);
+      if (fileRequirement) {
+        console.log("[ChatInterface] File required but not attached for service:", selectedPaidService.serviceId);
+
+        // Add user's message first (their text/prompt)
+        if (messageText) {
+          const userPromptMessage: Message = {
+            role: "user",
+            content: messageText,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, userPromptMessage]);
+          setInput("");
+        }
+
+        // Add assistant message prompting for file upload
+        const fileRequiredMessage: Message = {
+          role: "assistant",
+          content: `📁 **File Required**\n\n${fileRequirement.prompt}\n\nOnce you've attached the ${fileRequirement.type === "image" ? "image" : "audio file"}, your request will be processed and you'll be prompted for payment.`,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, fileRequiredMessage]);
+
+        // Don't clear the selected service - keep it so when user attaches file and sends, it works
+        return;
+      }
+    }
+
     // Check if a paid service from ServiceSelector was selected
     const isPaidServiceCall = selectedPaidService?.endpoint && !attachedFile;
 
@@ -1497,19 +1553,109 @@ export function ChatInterface({
       let headers: Record<string, string> = { "Content-Type": "application/json" };
 
       if (fileToSend) {
-        // Upload file first
-        const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
-        const imageUrl = await uploadFile(fileToSend, conversationIdForUpload);
+        // Check if a specific paid service that requires a file is selected
+        const selectedServiceId = selectedPaidService?.serviceId;
 
-        url = "/api/chat/image";
-        body = {
-          walletAddress: account.address,
-          conversationId: conversationIdForUpload,
-          message: messageText || "Analyze this image",
-          imageUrl: imageUrl,
-          projectId: projectId || null
-        };
-        // fetch call below will use url/body
+        if (selectedServiceId === "ocr") {
+          // OCR: Send base64 image directly to OCR endpoint
+          const base64Image = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+              const base64 = result.includes(",") ? result.split(",")[1] : result;
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(fileToSend);
+          });
+
+          url = "/api/ai/ocr";
+          body = {
+            image: base64Image,
+            walletAddress: account.address,
+          };
+          console.log("[ChatInterface] Routing to OCR with image attachment");
+        } else if (selectedServiceId === "transcribe_audio") {
+          // Audio transcription: Use FormData
+          const formData = new FormData();
+          formData.append("file", fileToSend);
+          formData.append("walletAddress", account.address);
+
+          // For transcription, we need to use FormData instead of JSON
+          url = "/api/ai/transcribe";
+          headers = {}; // Remove Content-Type to let browser set multipart/form-data
+          method = "POST";
+
+          // Special handling for FormData - will be handled below
+          response = await fetch(url, {
+            method,
+            body: formData,
+          });
+
+          // Skip the normal fetch below
+          if (response.status === 402) {
+            const paymentHeader = response.headers.get("PAYMENT-REQUIRED");
+            if (paymentHeader) {
+              const decoded = atob(paymentHeader);
+              const parsed = JSON.parse(decoded);
+              const accepts: AcceptOption[] = parsed.accepts || [];
+              const defaultNetwork = parsed.defaultNetwork;
+              const requirements = accepts[0];
+              const tokenName = requirements?.extra?.name;
+              const tokenVersion = requirements?.extra?.version;
+              const paymentId = `pay_${Date.now()}`;
+
+              // Store pending action with FormData
+              pendingActionsRef.current.set(paymentId, {
+                url,
+                method,
+                headers: {},
+                body: formData,
+                description: "Audio Transcription",
+                isFormData: true,
+              });
+
+              setMessages(prev => [...prev, {
+                role: "assistant",
+                content: "Payment required for audio transcription.",
+                timestamp: new Date().toISOString(),
+                paymentRequest: {
+                  ...requirements,
+                  tokenName,
+                  tokenVersion,
+                  paymentId,
+                  endpoint: url
+                },
+                paymentAccepts: accepts,
+                paymentDefaultNetwork: defaultNetwork,
+              }]);
+
+              if (selectedPaidService) {
+                setSelectedPaidService(null);
+              }
+              return;
+            }
+          }
+
+          data = await response.json();
+          // Continue with normal response handling below after the main fetch block
+          console.log("[ChatInterface] Audio transcription response:", data);
+        } else {
+          // Default: Image analysis via chat/image endpoint
+          const conversationIdForUpload = currentConversationId || generateConversationId() || "temp_conv";
+          const imageUrl = await uploadFile(fileToSend, conversationIdForUpload);
+
+          url = "/api/chat/image";
+          body = {
+            walletAddress: account.address,
+            conversationId: conversationIdForUpload,
+            message: messageText || "Analyze this image",
+            imageUrl: imageUrl,
+            projectId: projectId || null
+          };
+        }
+        // fetch call below will use url/body (except for transcribe which returns early)
       } else if (isPaidServiceCall && selectedPaidService && selectedPaidService.endpoint) {
         // Route to paid AI service endpoint (x402 protected)
         url = selectedPaidService.endpoint;
