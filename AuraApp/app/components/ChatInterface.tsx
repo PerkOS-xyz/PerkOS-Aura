@@ -25,6 +25,18 @@ function buildServiceRequestBody(serviceId: string, text: string): Record<string
     case "transcribe_audio":
       return { audioUrl: "" }; // Audio URL will be added separately
     case "synthesize_speech":
+      // Extract the actual text to synthesize from the instruction
+      // Try to match quoted text first (single or double quotes)
+      const quotedMatch = text.match(/['"]([^'"]+)['"]/);
+      if (quotedMatch) {
+        return { text: quotedMatch[1] };
+      }
+      // Try to extract text after common instruction patterns
+      const instructionMatch = text.match(/(?:generate\s+(?:speech|audio)\s+(?:for)?|synthesize|text\s+to\s+speech|speak|say|read\s+(?:out|aloud)?)[:\s]+(.+)/i);
+      if (instructionMatch) {
+        return { text: instructionMatch[1].trim() };
+      }
+      // Fallback: use the text as-is
       return { text };
 
     // NLP Services
@@ -1864,6 +1876,41 @@ export function ChatInterface({
                           </svg>
                           Open
                         </a>
+                      </div>
+                    </div>
+                  )}
+                  {/* Show audio player if audio attached */}
+                  {message.attachmentPreview && message.attachmentType === "audio" && (
+                    <div className="mb-2 p-3 bg-background/50 rounded-lg border border-border/50">
+                      <audio
+                        controls
+                        className="w-full max-w-md"
+                        src={message.attachmentPreview}
+                      >
+                        Your browser does not support the audio element.
+                      </audio>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const link = document.createElement('a');
+                            link.href = message.attachmentPreview!;
+                            link.download = `synthesized-audio-${Date.now()}.mp3`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm transition-colors"
+                          title="Download audio"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                          Download MP3
+                        </button>
                       </div>
                     </div>
                   )}
