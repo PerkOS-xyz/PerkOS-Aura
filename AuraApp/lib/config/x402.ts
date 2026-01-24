@@ -3,7 +3,7 @@
  * Configures x402 v2 protocol settings for PerkOS Vendor API
  */
 
-export type NetworkName = "base" | "base-sepolia" | "avalanche" | "avalanche-fuji" | "celo" | "celo-sepolia" | "ethereum";
+export type NetworkName = "base" | "base-sepolia" | "avalanche" | "avalanche-fuji" | "celo" | "celo-sepolia" | "ethereum" | "unichain";
 
 export interface PaymentConfig {
   payTo: `0x${string}`;
@@ -17,7 +17,7 @@ export interface PaymentConfig {
 // Order determines default selection (first = default)
 export const SUPPORTED_NETWORKS: NetworkName[] = (
   process.env.NEXT_PUBLIC_SUPPORTED_NETWORKS?.split(",") as NetworkName[] ||
-  ["avalanche", "base", "celo", "ethereum"]
+  ["unichain", "avalanche", "base", "celo"]
 ).filter(Boolean) as NetworkName[];
 
 // Validate required environment variables
@@ -40,7 +40,7 @@ if (!process.env.NEXT_PUBLIC_SERVICE_URL) {
 }
 
 // Validate network
-const validNetworks = ["base", "base-sepolia", "avalanche", "avalanche-fuji", "celo", "celo-sepolia", "ethereum"];
+const validNetworks = ["base", "base-sepolia", "avalanche", "avalanche-fuji", "celo", "celo-sepolia", "ethereum", "unichain"];
 if (!validNetworks.includes(requiredEnvVars.NETWORK)) {
   console.warn(`⚠️  Invalid network: ${requiredEnvVars.NETWORK}. Valid: ${validNetworks.join(", ")}`);
 }
@@ -147,6 +147,7 @@ export const networkMappings: Record<string, string> = {
   "celo": "eip155:42220",
   "celo-sepolia": "eip155:11142220",
   "ethereum": "eip155:1",
+  "unichain": "eip155:130",
 };
 
 // Get CAIP-2 network identifier
@@ -163,6 +164,7 @@ export const usdcAddresses: Record<string, `0x${string}`> = {
   "celo": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",         // Circle native USDC
   "celo-sepolia": "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
   "ethereum": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",     // Circle native USDC
+  "unichain": "0x078D782b760474a361dDA0AF3839290b0EF57AD6",     // Circle native USDC on Unichain
 };
 
 // Network display names for UI
@@ -174,6 +176,7 @@ export const networkDisplayNames: Record<string, string> = {
   "celo": "Celo",
   "celo-sepolia": "Celo Sepolia",
   "ethereum": "Ethereum",
+  "unichain": "Unichain",
 };
 
 // Payment route configurations (for middleware)
