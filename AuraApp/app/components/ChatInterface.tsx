@@ -553,6 +553,8 @@ interface ParsedPaymentInfo {
 // Get block explorer URL based on network (x402 V2 supported networks)
 function getBlockExplorerUrl(network: string, txHash: string): string {
   const explorers: Record<string, string> = {
+    // Unichain (primary network)
+    unichain: "https://uniscan.xyz/tx",
     // Avalanche
     avalanche: "https://snowtrace.io/tx",
     "avalanche-fuji": "https://testnet.snowtrace.io/tx",
@@ -578,7 +580,7 @@ function getBlockExplorerUrl(network: string, txHash: string): string {
     monad: "https://monadexplorer.com/tx",
     "monad-testnet": "https://testnet.monadexplorer.com/tx",
   };
-  const baseUrl = explorers[network.toLowerCase()] || "https://snowtrace.io/tx";
+  const baseUrl = explorers[network.toLowerCase()] || "https://uniscan.xyz/tx";
   return `${baseUrl}/${txHash}`;
 }
 

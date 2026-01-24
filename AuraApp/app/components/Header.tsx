@@ -7,14 +7,16 @@ import { ConnectButton, useActiveAccount, useActiveWalletChain } from "thirdweb/
 import { createWallet } from "thirdweb/wallets";
 import { inAppWallet } from "thirdweb/wallets";
 import { avalanche, avalancheFuji, base, baseSepolia, celo, celoSepoliaTestnet, ethereum } from "thirdweb/chains";
+import { unichain } from "@/app/providers";
 import { client } from "@/lib/client";
 
-// Supported chains
+// Supported chains (Unichain is now the primary network)
 const supportedChains = [
-  ethereum,
+  unichain,
   avalanche,
   base,
   celo,
+  ethereum,
   avalancheFuji,
   baseSepolia,
   celoSepoliaTestnet,
@@ -47,6 +49,7 @@ const navItems: NavItem[] = [
 
 // Network configurations
 const networkConfig: Record<number, { name: string; color: string; isTestnet: boolean }> = {
+  130: { name: "Unichain", color: "#FF007A", isTestnet: false },  // Uniswap pink
   1: { name: "Ethereum", color: "#627EEA", isTestnet: false },
   43114: { name: "Avalanche", color: "#E84142", isTestnet: false },
   43113: { name: "Fuji", color: "#E84142", isTestnet: true },
